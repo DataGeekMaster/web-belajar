@@ -7,7 +7,11 @@ import {
   onSnapshot,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
+  collectionGroup, // <--- TAMBAH INI (PENTING BUAT LEADERBOARD)
+  query,           // <--- TAMBAH INI
+  orderBy,         // <--- TAMBAH INI
+  limit
 } from 'firebase/firestore';
 import {
   AlertTriangle,
@@ -755,39 +759,78 @@ const CheatSheetModal = ({ isOpen, onClose, moduleTitle }) => {
 };
 
 
-// LEADERBOARD VIEW: HYBRID EDITION
-// (Kartu Statistik Modern + Podium Klasik)
-const LeaderboardView = ({ currentUserXP, currentUserName, currentUserWinRate }) => {
-  // 1. DATA PENGGUNA ASLI
-  const leaderboardData = [
-    {
-      id: 'current_user',
-      name: currentUserName || "KAMU",
-      xp: currentUserXP,
-      avatar: '😎',
-      winRate: currentUserWinRate,
-      isCurrentUser: true
-    }
-    // Nanti data user lain (Rank 2, Rank 3 dst) akan masuk sini dari database
-  ];
+// =========================================
+// LEADERBOARD VIEW: REAL-TIME DATABASE
+// =========================================
+const LeaderboardView = ({ db, userId }) => {
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Pisahkan Top 3 (Podium) dan Sisanya (List)
+  useEffect(() => {
+    // Query ajaib: Ambil semua dokumen "stats" dari semua user, urutkan XP tertinggi
+    const q = query(
+      collectionGroup(db, 'stats'),
+      orderBy('xp', 'desc'),
+      limit(50)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const users = snapshot.docs.map(doc => {
+        const data = doc.data();
+
+        // Trik mengambil ID User dari path database (users/{uid}/stats/main)
+        // Path: artifacts/appid/users/UID_ADALAH_INDEX_KE_3/stats/main
+        const pathSegments = doc.ref.path.split('/');
+        const uid = pathSegments[3];
+
+        // Hitung WinRate user lain dari data stats mereka
+        const winRate = data.totalProjectsFinished > 0
+          ? Math.round((data.totalProjectScore || 0) / data.totalProjectsFinished)
+          : 0;
+
+        return {
+          id: uid,
+          name: data.displayName || "Anonymous", // Kalau pacarmu belum set nama, munculnya Anonymous
+          xp: data.xp || 0,
+          avatar: '😎', // Nanti bisa dibikin random emoji
+          winRate: winRate,
+          isCurrentUser: uid === userId
+        };
+      });
+
+      setLeaderboardData(users);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error Leaderboard:", error);
+      // PENTING: Kalau error "Index required", cek console browser!
+    });
+
+    return () => unsubscribe();
+  }, [db, userId]);
+
+  // Pisahkan Top 3 dan Sisanya
   const topThree = leaderboardData.slice(0, 3);
   const restOfPlayers = leaderboardData.slice(3);
 
-  // Cari data spesifik untuk podium (bisa undefined jika belum ada player)
+  // Ambil data spesifik podium (kasih fallback object biar gak error kalau kosong)
   const rank1 = topThree[0];
   const rank2 = topThree[1];
   const rank3 = topThree[2];
 
-  // Hitungan lingkaran chart Win Rate (Matematika SVG)
+  // Cari data user sendiri buat ditampilkan di kartu atas
+  const currentUser = leaderboardData.find(u => u.isCurrentUser) || { xp: 0, winRate: 0, name: 'KAMU' };
+  const currentUserRank = leaderboardData.findIndex(u => u.isCurrentUser) + 1;
+
+  // Matematika Chart Lingkaran
   const radius = 40;
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (currentUserWinRate / 100) * circumference;
+  const strokeDashoffset = circumference - (currentUser.winRate / 100) * circumference;
+
+  if (loading) return <div className="p-10 text-center animate-pulse font-bold text-slate-400">Sedang memanggil para juara...</div>;
 
   return (
     <div className="p-6 animate-in fade-in pb-32">
-      {/* --- HEADER --- */}
+      {/* HEADER */}
       <div className="text-center mb-10">
         <h2 className="text-3xl font-black text-slate-800 flex items-center justify-center gap-2 uppercase">
           <Trophy className="text-yellow-500" size={32} />
@@ -796,144 +839,115 @@ const LeaderboardView = ({ currentUserXP, currentUserName, currentUserWinRate })
         <p className="text-slate-500 font-bold text-sm">Peringkat Global Para Challenger</p>
       </div>
 
-      {/* --- BAGIAN 1: KARTU STATISTIK (MODERN STYLE) --- */}
+      {/* KARTU STATISTIK (USER SENDIRI) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
         {/* Kartu Ranking */}
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-200 relative overflow-hidden group">
-          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
-            <Award size={100} />
-          </div>
+          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform"><Award size={100} /></div>
           <h3 className="text-lg font-bold mb-1 opacity-90">Peringkat Kamu</h3>
           <div className="text-5xl font-black flex items-baseline gap-2">
-            #1
+            #{currentUserRank > 0 ? currentUserRank : '-'}
             <span className="text-lg font-bold opacity-60">/ {leaderboardData.length}</span>
           </div>
           <div className="mt-4 bg-white/20 rounded-xl p-3 text-sm font-bold inline-flex items-center gap-2 backdrop-blur-sm">
-            <Zap size={16} className="text-yellow-300 fill-yellow-300" /> Total {currentUserXP.toLocaleString()} XP
+            <Zap size={16} className="text-yellow-300 fill-yellow-300" /> Total {currentUser.xp.toLocaleString()} XP
           </div>
         </div>
 
         {/* Kartu Win Rate */}
         <div className="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-100 flex items-center justify-between relative overflow-hidden">
           <div className="z-10">
-            <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
-              <Target size={20} className="text-emerald-500" /> Win Rate
-            </h3>
-            <div className="text-4xl font-black text-slate-800 mb-1">
-              {currentUserWinRate}%
-            </div>
-            <p className="text-xs text-slate-400 font-bold max-w-[120px]">
-              Akurasi keberhasilan misi proyekmu.
-            </p>
+            <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2"><Target size={20} className="text-emerald-500" /> Win Rate</h3>
+            <div className="text-4xl font-black text-slate-800 mb-1">{currentUser.winRate}%</div>
+            <p className="text-xs text-slate-400 font-bold max-w-[120px]">Akurasi keberhasilan misi proyekmu.</p>
           </div>
-          {/* Chart SVG */}
           <div className="relative w-32 h-32 flex items-center justify-center">
             <svg className="w-full h-full transform -rotate-90">
               <circle cx="64" cy="64" r={radius} stroke="#e2e8f0" strokeWidth="12" fill="transparent" />
               <circle cx="64" cy="64" r={radius} stroke="#10b981" strokeWidth="12" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-xl font-black text-slate-700">{currentUserWinRate}%</span>
+              <span className="text-xl font-black text-slate-700">{currentUser.winRate}%</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* --- BAGIAN 2: PODIUM BAR CHART (CLASSIC STYLE) --- */}
-      {/* Container Podium */}
+      {/* PODIUM (JUARA 1, 2, 3) */}
       <div className="flex justify-center items-end gap-2 md:gap-4 mb-12 min-h-[300px]">
-
-        {/* JUARA 2 (KIRI - BIRU) */}
+        {/* JUARA 2 */}
         <div className="flex flex-col items-center w-1/3 max-w-[120px]">
           {rank2 ? (
-            <>
-              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-700">
+            <div className="w-full flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700">
+              <div className="mb-2 text-center">
                 <div className="w-12 h-12 bg-blue-100 rounded-full border-4 border-blue-300 flex items-center justify-center text-blue-600 font-black text-lg shadow-lg mx-auto mb-2 relative">
                   {rank2.avatar}
-                  {/* Badge YOU untuk Juara 2 */}
                   {rank2.isCurrentUser && <span className="absolute -top-2 -right-2 text-[8px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full shadow-sm border border-white z-10">YOU</span>}
                 </div>
                 <p className="text-slate-600 font-bold text-xs truncate w-20 mx-auto">{rank2.name}</p>
                 <p className="text-blue-500 text-[10px] font-bold">{rank2.xp} XP</p>
               </div>
-              <div className="w-full h-32 bg-blue-400 rounded-t-3xl border-b-8 border-blue-600 flex justify-center pt-4 shadow-xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-700">
-                <span className="text-5xl font-black text-blue-300/50 absolute bottom-0">2</span>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-32 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative">
-              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">2</span>
+              <div className="w-full h-32 bg-blue-400 rounded-t-3xl border-b-8 border-blue-600 flex justify-center pt-4 shadow-xl relative"><span className="text-5xl font-black text-blue-300/50 absolute bottom-0">2</span></div>
             </div>
-          )}
+          ) : <div className="w-full h-32 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative"><span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">2</span></div>}
         </div>
 
-        {/* JUARA 1 (TENGAH - KUNING - MAHKOTA) */}
+        {/* JUARA 1 */}
         <div className="flex flex-col items-center w-1/3 max-w-[140px] -mb-2 z-10">
-          {rank1 && (
-            <>
-              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-500">
-                <Crown className="text-yellow-400 mb-1 animate-bounce mx-auto drop-shadow-sm" fill="currentColor" size={48} />
+          {rank1 ? (
+            <div className="w-full flex flex-col items-center animate-in slide-in-from-bottom-8 duration-500">
+              <Crown className="text-yellow-400 mb-1 animate-bounce mx-auto drop-shadow-sm" fill="currentColor" size={48} />
+              <div className="mb-2 text-center">
                 <div className="w-16 h-16 bg-yellow-100 rounded-full border-4 border-yellow-300 flex items-center justify-center text-yellow-600 text-2xl font-black shadow-xl mx-auto mb-2 relative">
                   {rank1.avatar}
-                  {/* Badge YOU untuk Juara 1 */}
                   {rank1.isCurrentUser && <span className="absolute -top-3 -right-3 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full shadow-sm border-2 border-white z-10 font-bold animate-pulse">YOU</span>}
                 </div>
                 <p className="text-slate-800 font-black text-sm truncate w-24 mx-auto">{rank1.name}</p>
                 <p className="text-yellow-600 text-xs font-bold">{rank1.xp} XP</p>
               </div>
-              <div className="w-full h-48 bg-yellow-400 rounded-t-3xl border-b-8 border-yellow-600 flex justify-center pt-4 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-500 delay-100">
-                <span className="text-6xl font-black text-yellow-300/50 absolute bottom-0">1</span>
-              </div>
-            </>
-          )}
+              <div className="w-full h-48 bg-yellow-400 rounded-t-3xl border-b-8 border-yellow-600 flex justify-center pt-4 shadow-2xl relative"><span className="text-6xl font-black text-yellow-300/50 absolute bottom-0">1</span></div>
+            </div>
+          ) : null}
         </div>
 
-        {/* JUARA 3 (KANAN - PINK) */}
+        {/* JUARA 3 */}
         <div className="flex flex-col items-center w-1/3 max-w-[120px]">
           {rank3 ? (
-            <>
-              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-1000">
+            <div className="w-full flex flex-col items-center animate-in slide-in-from-bottom-8 duration-1000">
+              <div className="mb-2 text-center">
                 <div className="w-12 h-12 bg-pink-100 rounded-full border-4 border-pink-300 flex items-center justify-center text-pink-600 font-black text-lg shadow-lg mx-auto mb-2 relative">
                   {rank3.avatar}
-                  {/* Badge YOU untuk Juara 3 */}
                   {rank3.isCurrentUser && <span className="absolute -top-2 -right-2 text-[8px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full shadow-sm border border-white z-10">YOU</span>}
                 </div>
                 <p className="text-slate-600 font-bold text-xs truncate w-20 mx-auto">{rank3.name}</p>
                 <p className="text-pink-500 text-[10px] font-bold">{rank3.xp} XP</p>
               </div>
-              <div className="w-full h-24 bg-pink-400 rounded-t-3xl border-b-8 border-pink-600 flex justify-center pt-4 shadow-xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-1000">
-                <span className="text-5xl font-black text-pink-300/50 absolute bottom-0">3</span>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-24 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative">
-              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">3</span>
+              <div className="w-full h-24 bg-pink-400 rounded-t-3xl border-b-8 border-pink-600 flex justify-center pt-4 shadow-xl relative"><span className="text-5xl font-black text-pink-300/50 absolute bottom-0">3</span></div>
             </div>
-          )}
+          ) : <div className="w-full h-24 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative"><span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">3</span></div>}
         </div>
       </div>
-      {/* --- BAGIAN 3: LIST SISANYA (RANK 4 KE BAWAH) --- */}
+
+      {/* LIST SISANYA (RANK 4 DST) */}
       {restOfPlayers.length > 0 ? (
         <div className="bg-white rounded-3xl p-6 shadow-lg border border-slate-200/60 space-y-3">
-          {restOfPlayers.map((user, idx) => {
-            const rank = idx + 4;
-            return (
-              <div key={user.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100">
-                <div className="flex items-center gap-4">
-                  <span className="font-black text-slate-300 text-lg w-6">{rank}</span>
-                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-lg">{user.avatar}</div>
-                  <span className="font-bold text-slate-600">{user.name}</span>
+          {restOfPlayers.map((user, idx) => (
+            <div key={user.id} className={`flex items-center justify-between p-4 rounded-2xl border ${user.isCurrentUser ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-100'}`}>
+              <div className="flex items-center gap-4">
+                <span className="font-black text-slate-300 text-lg w-6">{idx + 4}</span>
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-lg">{user.avatar}</div>
+                <div className="flex flex-col">
+                  <span className={`font-bold ${user.isCurrentUser ? 'text-blue-700' : 'text-slate-600'}`}>{user.name}</span>
+                  {user.isCurrentUser && <span className="text-[10px] text-blue-500 font-bold">KAMU</span>}
                 </div>
-                <span className="font-bold text-slate-400 text-sm">{user.xp} XP</span>
               </div>
-            );
-          })}
+              <span className="font-bold text-slate-400 text-sm">{user.xp} XP</span>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 bg-slate-50/50">
-          {/* Placeholder kosong */}
           <p className="font-bold text-sm">Belum ada rival lain...</p>
-          <p className="text-xs mt-1">Lawan masih loading, kamu rajanya sekarang! 👑</p>
         </div>
       )}
     </div>
@@ -1618,9 +1632,8 @@ export default function App() {
           {currentView === 'leaderboard' && (
             <div className="pt-10 animate-in fade-in">
               <LeaderboardView
-                currentUserXP={userStats.xp}
-                currentUserName={userStats.displayName || user?.uid.slice(0, 5) || "KAMU"}
-                currentUserWinRate={projectWinRate} // [BARU] Oper winrate ke leaderboard
+                db={db}
+                userId={user?.uid}
               />
             </div>
           )}
