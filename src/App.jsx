@@ -34,6 +34,8 @@ import {
   Zap
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { COURSES_DATA } from './data/courses';
+import { COLOR_THEMES, getTheme } from './data/theme';
 
 // --- CONFIGURATION ---
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
@@ -73,121 +75,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
-
-// --- STYLES INJECTION ---
-const GlobalStyles = () => (
-  <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
-        body { font-family: 'Nunito', sans-serif; }
-        .btn-3d { transition: all 0.1s; }
-        .btn-3d:active { transform: translateY(4px); border-bottom-width: 0px; margin-bottom: 4px; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    `}</style>
-);
-
-// --- DYNAMIC COLOR SYSTEM ---
-const COLOR_THEMES = {
-  blue: {
-    bg: 'bg-blue-500', bgLight: 'bg-blue-50', bgHover: 'hover:bg-blue-50',
-    text: 'text-blue-600', textLight: 'text-blue-400',
-    border: 'border-blue-500', borderLight: 'border-blue-200', borderB: 'border-b-blue-700',
-    ring: 'ring-blue-200', icon: 'text-blue-500', shadow: 'shadow-blue-200'
-  },
-  pink: {
-    bg: 'bg-pink-500', bgLight: 'bg-pink-50', bgHover: 'hover:bg-pink-50',
-    text: 'text-pink-600', textLight: 'text-pink-400',
-    border: 'border-pink-500', borderLight: 'border-pink-200', borderB: 'border-b-pink-700',
-    ring: 'ring-pink-200', icon: 'text-pink-500', shadow: 'shadow-pink-200'
-  },
-  purple: {
-    bg: 'bg-purple-500', bgLight: 'bg-purple-50', bgHover: 'hover:bg-purple-50',
-    text: 'text-purple-600', textLight: 'text-purple-400',
-    border: 'border-purple-500', borderLight: 'border-purple-200', borderB: 'border-b-purple-700',
-    ring: 'ring-purple-200', icon: 'text-purple-500', shadow: 'shadow-purple-200'
-  },
-  green: {
-    bg: 'bg-emerald-500', bgLight: 'bg-emerald-50', bgHover: 'hover:bg-emerald-50',
-    text: 'text-emerald-600', textLight: 'text-emerald-400',
-    border: 'border-emerald-500', borderLight: 'border-emerald-200', borderB: 'border-b-emerald-700',
-    ring: 'ring-emerald-200', icon: 'text-emerald-500', shadow: 'shadow-emerald-200'
-  },
-  yellow: {
-    bg: 'bg-yellow-400', bgLight: 'bg-yellow-50', bgHover: 'hover:bg-yellow-50',
-    text: 'text-yellow-700', textLight: 'text-yellow-500',
-    border: 'border-yellow-400', borderLight: 'border-yellow-200', borderB: 'border-b-yellow-600',
-    ring: 'ring-yellow-200', icon: 'text-yellow-600', shadow: 'shadow-yellow-200'
-  }
-};
-
-const getTheme = (color) => COLOR_THEMES[color] || COLOR_THEMES.blue;
-
-// --- INITIAL DATA ---
-const COURSES_DATA = [
-  {
-    id: "python_protocol",
-    title: "PROTOKOL PYTHON",
-    icon: <Terminal size={24} />,
-    description: "Kuasai bahasa mesin. Bangun backend, skrip, dan model AI.",
-    color: "blue",
-    codeConfig: {
-      language: "Python",
-      defaultCode: "print('Halo Dunia dari Protokol Python')",
-      placeholder: "Masukkan Kode Python..."
-    },
-    modules: [
-      {
-        id: "mod_getting_started",
-        title: "Inisialisasi Sistem",
-        lessons: [
-          { id: "py_what_is", title: "Konsep Inti", description: "Sejarah & kemampuan" },
-          { id: "py_install", title: "Setup Lingkungan", description: "Persiapan environment" },
-          { id: "py_interpreter", title: "Link Interpreter", description: "Cara kerjanya" },
-          { id: "py_first_prog", title: "Protokol Hello World", description: "Program Pertama" }
-        ]
-      },
-      {
-        id: "mod_primitive",
-        title: "Primitif Data",
-        lessons: [
-          { id: "pt_variables", title: "Alokasi Memori", description: "Variabel" },
-          { id: "pt_strings", title: "Aliran Teks", description: "Strings" },
-          { id: "pt_numbers", title: "Data Numerik", description: "Integers & Floats" },
-          { id: "pt_conversion", title: "Mutasi Tipe", description: "Konversi Tipe" }
-        ]
-      }
-    ]
-  },
-  {
-    id: "stats_stream",
-    title: "ALIRAN STATISTIKA",
-    icon: <BarChart2 size={24} />,
-    description: "Pecahkan pola realitas. Analisis distribusi data dan probabilitas.",
-    color: "pink",
-    codeConfig: {
-      language: "R",
-      defaultCode: "data <- c(10, 20, 30, 40)\nmean(data)",
-      placeholder: "Masukkan Kode R..."
-    },
-    modules: [
-      {
-        id: "mod_stat_desc",
-        title: "Analitik Deskriptif",
-        lessons: [
-          { id: "stat_intro", title: "Tipe Data", description: "Kualitatif vs Kuantitatif" },
-          { id: "stat_central", title: "Tendensi Sentral", description: "Mean, Median, Modus" },
-        ]
-      },
-      {
-        id: "mod_prob",
-        title: "Matriks Probabilitas",
-        lessons: [
-          { id: "prob_basic", title: "Logika Peluang", description: "Aturan Dasar Probabilitas" },
-        ]
-      }
-    ]
-  }
-];
 
 // --- UTILS: MARKDOWN SIMPLIFIER ---
 const parseInline = (text) => {
@@ -1334,7 +1221,6 @@ export default function App() {
 
   return (
     <>
-      <GlobalStyles />
       <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-pink-200 selection:text-pink-900">
 
         <Sidebar

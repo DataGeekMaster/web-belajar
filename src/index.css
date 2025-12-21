@@ -1,3 +1,31 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Pindahan dari GlobalStyles */
+
+body {
+    font-family: 'Nunito', sans-serif;
+}
+
+.btn-3d {
+    transition: all 0.1s;
+}
+
+.btn-3d:active {
+    transform: translateY(4px);
+    border-bottom-width: 0px;
+    margin-bottom: 4px;
+}
+
+/* Sembunyikan Scrollbar */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
