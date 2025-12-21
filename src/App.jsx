@@ -12,6 +12,7 @@ import {
 import {
   AlertTriangle,
   ArrowRight,
+  Award,
   BarChart2,
   BookOpen, CheckCircle,
   Code,
@@ -28,6 +29,7 @@ import {
   Shield,
   Sparkles,
   Star,
+  Target,
   Terminal,
   Trophy,
   X,
@@ -235,12 +237,12 @@ const generateLessonContent = async (topic, courseContext = "General") => {
 const chatWithAI = async (context, query) => {
   const prompt = `Konteks: "${context}". User: "${query}". Peran: Tutor Coding Gaul. Jawab dalam BAHASA INDONESIA yang asik.`;
   const res = await smartAIFetch(prompt);
-  return res || "Sistem sibuk, coba lagi nanti ya kawan!";
+  return res || "Sistem sibuk, coba lagi nanti ya Challenger!";
 };
 
 const runCodeWithAI = async (codeSnippet, language = "Python") => {
   const prompt = `Bertindak sebagai Interpreter Virtual ${language}.
-    INSTRUKSI PENTING: Jika kode berikut ngawur, lirik lagu, atau bukan kode ${language} yang valid, jawab TEPAT: "⚠️ ERROR: Woy kawan, ketik kode yang bener dong! Jangan ngasal.".
+    INSTRUKSI PENTING: Jika kode berikut ngawur, lirik lagu, atau bukan kode ${language} yang valid, jawab TEPAT: "⚠️ ERROR: Hei Challenger, ketik kode yang bener dong! Jangan ngasal.".
     Jangan buat kode baru. Jangan jelaskan. Cukup berikan output eksekusinya saja.
     Kode:
     ${codeSnippet}`;
@@ -315,7 +317,7 @@ const Loading = () => (
 
 // --- COMPONENTS & SIDEBAR ---
 
-const Sidebar = ({ userStats, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink }) => {
+const Sidebar = ({ userStats, userName, onRename, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink }) => {
   const projectWinRate = userStats.totalProjectsFinished > 0
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
@@ -328,23 +330,54 @@ const Sidebar = ({ userStats, currentView, setCurrentView, onOpenCodeLab, onOpen
   return (
     <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-screen bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40">
       <div className="hidden md:flex items-center gap-3 px-4 py-6 mb-4">
-        <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200"><Zap fill="currentColor" /></div>
-        <h1 className="text-2xl font-black text-slate-800 tracking-tight">Kawan<span className="text-blue-500">Belajar</span></h1>
+        {/* Klik Avatar buat ganti nama */}
+        <button onClick={onRename} className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 hover:scale-105 transition-transform group relative">
+          <Zap fill="currentColor" />
+          <span className="absolute -bottom-8 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Ganti Nama</span>
+        </button>
+
+        <div className="text-left">
+          <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none">Level<span className="text-blue-500">Up</span></h1>
+          {/* Tampilkan Nama User di sini */}
+          <button onClick={onRename} className="text-xs font-bold text-slate-400 hover:text-blue-500 transition-colors text-left truncate max-w-[120px]">
+            @{userName} ✏️
+          </button>
+        </div>
       </div>
 
       <nav className="w-full flex md:flex-col justify-around md:justify-start gap-2">
+        {/* KITA DEFINISIKAN CLASS LENGKAP DI SINI BIAR TAILWIND BISA BACA */}
         {[
-          { id: 'learn', icon: BookOpen, label: "Belajar", color: "blue" },
-          { id: 'leaderboard', icon: Trophy, label: "Peringkat", color: "yellow" },
+          {
+            id: 'learn',
+            icon: BookOpen,
+            label: "Belajar",
+            // Class Lengkap untuk Blue
+            activeClass: "bg-blue-50 text-blue-600 border-blue-400",
+            hoverClass: "text-slate-400 border-transparent hover:bg-blue-50 hover:text-blue-600"
+          },
+          {
+            id: 'leaderboard',
+            icon: Trophy,
+            label: "Peringkat",
+            // Class Lengkap untuk Yellow
+            activeClass: "bg-yellow-50 text-yellow-600 border-yellow-400",
+            hoverClass: "text-slate-400 border-transparent hover:bg-yellow-50 hover:text-yellow-600"
+          },
         ].map(item => (
           <button
             key={item.id}
             onClick={() => setCurrentView(item.id)}
-            className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 border-transparent font-black uppercase text-sm tracking-wide ${currentView === item.id ? `bg-${item.color}-50 text-${item.color}-600 border-${item.color}-200` : 'text-slate-400 hover:bg-slate-50'}`}
+            className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 font-black uppercase text-sm tracking-wide 
+              ${currentView === item.id
+                ? item.activeClass
+                : item.hoverClass
+              }`}
           >
             <item.icon size={24} /> <span className="hidden md:inline">{item.label}</span>
           </button>
         ))}
+
         <div className="hidden md:block h-px bg-slate-100 my-2 mx-4"></div>
         <button onClick={onOpenCodeLab} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-purple-50 hover:text-purple-600 font-bold transition-all"><Terminal size={24} /> <span className="hidden md:inline">Lab Koding</span></button>
         <button onClick={onOpenProject} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-pink-50 hover:text-pink-600 font-bold transition-all"><Rocket size={24} /> <span className="hidden md:inline">Cari Ide Proyek</span></button>
@@ -656,7 +689,7 @@ const ProjectModal = ({ isOpen, onClose, userId, userXP }) => {
             </div>
             <div className="flex-1 flex flex-col bg-slate-900">
               <div className="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700"><span className="text-xs font-mono text-slate-400">editor.py</span>{activeProject.status !== 'completed' && (<span className="text-xs text-yellow-500 animate-pulse font-bold">• Auto-save enabled</span>)}</div>
-              <textarea value={code} onChange={e => setCode(e.target.value)} disabled={activeProject.status === 'completed'} className="flex-1 bg-[#0d0d0d] text-blue-300 font-mono p-4 resize-none focus:outline-none text-sm leading-relaxed disabled:opacity-50" placeholder="# Tulis kodemu di sini kawan..." spellCheck="false" />
+              <textarea value={code} onChange={e => setCode(e.target.value)} disabled={activeProject.status === 'completed'} className="flex-1 bg-[#0d0d0d] text-blue-300 font-mono p-4 resize-none focus:outline-none text-sm leading-relaxed disabled:opacity-50" placeholder="# Tulis kodemu di sini" spellCheck="false" />
               {activeProject.status !== 'completed' && (
                 <div className="p-4 bg-slate-800 border-t border-slate-700 flex justify-end gap-3">
                   <button onClick={handleCheck} disabled={evaluating} className="px-6 py-2 rounded-xl font-bold text-slate-300 hover:bg-slate-700 transition-all border border-slate-600 text-sm">{evaluating ? "NGECEK..." : "CEK DULU (SARAN)"}</button>
@@ -708,91 +741,188 @@ const CheatSheetModal = ({ isOpen, onClose, moduleTitle }) => {
   );
 };
 
-// [UPDATED] Leaderboard dengan Winrate
-const LeaderboardView = ({ currentUserXP, currentUserName = "KAMU", currentUserWinRate = 0 }) => {
-  const [rivals, setRivals] = useState([]);
 
-  useEffect(() => {
-    const names = ["Asep_Coder", "Siti_Py", "Budi_JS", "Rina_Data", "Joko_AI"];
-    const generated = names.map((name, i) => ({
-      id: `rival_${i}`,
-      name,
-      xp: currentUserXP + Math.floor(Math.random() * 800) - 400,
-      winRate: Math.floor(Math.random() * 100),
-      isMe: false
-    }));
-    const all = [
-      { id: 'me', name: currentUserName, xp: currentUserXP, winRate: currentUserWinRate, isMe: true },
-      ...generated
-    ].sort((a, b) => b.xp - a.xp);
-    setRivals(all);
-  }, [currentUserXP, currentUserName, currentUserWinRate]);
+// LEADERBOARD VIEW: HYBRID EDITION
+// (Kartu Statistik Modern + Podium Klasik)
+const LeaderboardView = ({ currentUserXP, currentUserName, currentUserWinRate }) => {
+  // 1. DATA PENGGUNA ASLI
+  const leaderboardData = [
+    {
+      id: 'current_user',
+      name: currentUserName || "KAMU",
+      xp: currentUserXP,
+      avatar: '😎',
+      winRate: currentUserWinRate,
+      isCurrentUser: true
+    }
+    // Nanti data user lain (Rank 2, Rank 3 dst) akan masuk sini dari database
+  ];
 
-  const topThree = rivals.slice(0, 3);
-  const rest = rivals.slice(3);
+  // Pisahkan Top 3 (Podium) dan Sisanya (List)
+  const topThree = leaderboardData.slice(0, 3);
+  const restOfPlayers = leaderboardData.slice(3);
+
+  // Cari data spesifik untuk podium (bisa undefined jika belum ada player)
+  const rank1 = topThree[0];
+  const rank2 = topThree[1];
+  const rank3 = topThree[2];
+
+  // Hitungan lingkaran chart Win Rate (Matematika SVG)
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (currentUserWinRate / 100) * circumference;
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 pb-32">
-      <h2 className="text-3xl font-black text-center text-slate-700 mb-10 uppercase tracking-tight">Papan Juara</h2>
-
-      <div className="flex justify-center items-end gap-2 md:gap-4 mb-12 h-72">
-        {topThree[1] && (
-          <div className="flex flex-col items-center w-1/3">
-            <div className="mb-2 text-center">
-              <div className="w-14 h-14 bg-blue-100 rounded-full border-4 border-blue-300 flex items-center justify-center text-blue-600 font-black text-lg shadow-lg mx-auto">{topThree[1].name[0]}</div>
-              <p className="text-slate-600 font-bold text-xs mt-2 truncate max-w-[80px]">{topThree[1].name}</p>
-              <p className="text-blue-500 text-xs font-bold">{topThree[1].xp} XP</p>
-              <p className="text-slate-400 text-[10px] font-bold">WR {topThree[1].winRate}%</p>
-            </div>
-            <div className="w-full h-32 bg-blue-400 rounded-t-3xl border-b-8 border-blue-600 flex justify-center pt-4 shadow-xl relative overflow-hidden"><span className="text-5xl font-black text-blue-300/50 absolute bottom-0">2</span></div>
-          </div>
-        )}
-        {topThree[0] && (
-          <div className="flex flex-col items-center w-1/3 -mb-4 z-10">
-            <Crown className="text-yellow-400 mb-2 animate-bounce drop-shadow-md" fill="currentColor" size={40} />
-            <div className="mb-2 text-center">
-              <div className="w-20 h-20 bg-yellow-100 rounded-full border-4 border-yellow-300 flex items-center justify-center text-yellow-600 text-2xl font-black shadow-xl mx-auto">{topThree[0].name[0]}</div>
-              <p className="text-slate-800 font-black text-sm mt-2 truncate max-w-[100px]">{topThree[0].name}</p>
-              <p className="text-yellow-600 text-xs font-bold">{topThree[0].xp} XP</p>
-              <p className="text-slate-400 text-[10px] font-bold">WR {topThree[0].winRate}%</p>
-            </div>
-            <div className="w-full h-48 bg-yellow-400 rounded-t-3xl border-b-8 border-yellow-600 flex justify-center pt-4 shadow-xl relative overflow-hidden"><span className="text-6xl font-black text-yellow-300/50 absolute bottom-0">1</span></div>
-          </div>
-        )}
-        {topThree[2] && (
-          <div className="flex flex-col items-center w-1/3">
-            <div className="mb-2 text-center">
-              <div className="w-14 h-14 bg-pink-100 rounded-full border-4 border-pink-300 flex items-center justify-center text-pink-600 font-black text-lg shadow-lg mx-auto">{topThree[2].name[0]}</div>
-              <p className="text-slate-600 font-bold text-xs mt-2 truncate max-w-[80px]">{topThree[2].name}</p>
-              <p className="text-pink-500 text-xs font-bold">{topThree[2].xp} XP</p>
-              <p className="text-slate-400 text-[10px] font-bold">WR {topThree[2].winRate}%</p>
-            </div>
-            <div className="w-full h-24 bg-pink-400 rounded-t-3xl border-b-8 border-pink-600 flex justify-center pt-4 shadow-xl relative overflow-hidden"><span className="text-5xl font-black text-pink-300/50 absolute bottom-0">3</span></div>
-          </div>
-        )}
+    <div className="p-6 animate-in fade-in pb-32">
+      {/* --- HEADER --- */}
+      <div className="text-center mb-10">
+        <h2 className="text-3xl font-black text-slate-800 flex items-center justify-center gap-2 uppercase">
+          <Trophy className="text-yellow-500" size={32} />
+          Papan Juara
+        </h2>
+        <p className="text-slate-500 font-bold text-sm">Peringkat Global Para Challenger</p>
       </div>
 
-      <div className="space-y-3">
-        {rest.map((player, idx) => {
-          const rank = idx + 4;
-          const isMe = player.isMe;
-          return (
-            <div key={player.id} className={`flex items-center justify-between p-4 rounded-2xl border-2 border-b-4 transition-all ${isMe ? 'bg-blue-50 border-blue-400 border-b-blue-500 ring-2 ring-blue-200 transform scale-105 shadow-lg z-10' : 'bg-white border-slate-100 border-b-slate-200'}`}>
-              <div className="flex items-center gap-4">
-                <span className={`font-black text-lg w-6 ${isMe ? 'text-blue-500' : 'text-slate-300'}`}>{rank}</span>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm ${isMe ? 'bg-blue-500' : 'bg-slate-300'}`}>{player.name[0]}</div>
-                <div>
-                  <p className={`font-bold ${isMe ? 'text-blue-700' : 'text-slate-600'}`}>{player.name} {isMe && <span className="text-[10px] bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full ml-1">YOU</span>}</p>
+      {/* --- BAGIAN 1: KARTU STATISTIK (MODERN STYLE) --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-16">
+        {/* Kartu Ranking */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-200 relative overflow-hidden group">
+          <div className="absolute right-0 top-0 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform">
+            <Award size={100} />
+          </div>
+          <h3 className="text-lg font-bold mb-1 opacity-90">Peringkat Kamu</h3>
+          <div className="text-5xl font-black flex items-baseline gap-2">
+            #1
+            <span className="text-lg font-bold opacity-60">/ {leaderboardData.length}</span>
+          </div>
+          <div className="mt-4 bg-white/20 rounded-xl p-3 text-sm font-bold inline-flex items-center gap-2 backdrop-blur-sm">
+            <Zap size={16} className="text-yellow-300 fill-yellow-300" /> Total {currentUserXP.toLocaleString()} XP
+          </div>
+        </div>
+
+        {/* Kartu Win Rate */}
+        <div className="bg-white rounded-3xl p-6 shadow-xl border-2 border-slate-100 flex items-center justify-between relative overflow-hidden">
+          <div className="z-10">
+            <h3 className="text-lg font-bold text-slate-700 mb-1 flex items-center gap-2">
+              <Target size={20} className="text-emerald-500" /> Win Rate
+            </h3>
+            <div className="text-4xl font-black text-slate-800 mb-1">
+              {currentUserWinRate}%
+            </div>
+            <p className="text-xs text-slate-400 font-bold max-w-[120px]">
+              Akurasi keberhasilan misi proyekmu.
+            </p>
+          </div>
+          {/* Chart SVG */}
+          <div className="relative w-32 h-32 flex items-center justify-center">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle cx="64" cy="64" r={radius} stroke="#e2e8f0" strokeWidth="12" fill="transparent" />
+              <circle cx="64" cy="64" r={radius} stroke="#10b981" strokeWidth="12" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" className="transition-all duration-1000 ease-out" />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <span className="text-xl font-black text-slate-700">{currentUserWinRate}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- BAGIAN 2: PODIUM BAR CHART (CLASSIC STYLE) --- */}
+      {/* Container Podium */}
+      <div className="flex justify-center items-end gap-2 md:gap-4 mb-12 min-h-[300px]">
+
+        {/* JUARA 2 (KIRI - BIRU) */}
+        <div className="flex flex-col items-center w-1/3 max-w-[120px]">
+          {rank2 ? (
+            <>
+              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-700">
+                <div className="w-12 h-12 bg-blue-100 rounded-full border-4 border-blue-300 flex items-center justify-center text-blue-600 font-black text-lg shadow-lg mx-auto mb-2 relative">
+                  {rank2.avatar}
+                  {/* Badge YOU untuk Juara 2 */}
+                  {rank2.isCurrentUser && <span className="absolute -top-2 -right-2 text-[8px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full shadow-sm border border-white z-10">YOU</span>}
                 </div>
+                <p className="text-slate-600 font-bold text-xs truncate w-20 mx-auto">{rank2.name}</p>
+                <p className="text-blue-500 text-[10px] font-bold">{rank2.xp} XP</p>
               </div>
-              <div className="text-right">
-                <p className={`font-bold ${isMe ? 'text-blue-600' : 'text-slate-400'}`}>{player.xp} XP</p>
-                <p className="text-[10px] font-bold text-slate-300">WR {player.winRate}%</p>
+              <div className="w-full h-32 bg-blue-400 rounded-t-3xl border-b-8 border-blue-600 flex justify-center pt-4 shadow-xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-700">
+                <span className="text-5xl font-black text-blue-300/50 absolute bottom-0">2</span>
               </div>
+            </>
+          ) : (
+            <div className="w-full h-32 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative">
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">2</span>
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        {/* JUARA 1 (TENGAH - KUNING - MAHKOTA) */}
+        <div className="flex flex-col items-center w-1/3 max-w-[140px] -mb-2 z-10">
+          {rank1 && (
+            <>
+              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-500">
+                <Crown className="text-yellow-400 mb-1 animate-bounce mx-auto drop-shadow-sm" fill="currentColor" size={48} />
+                <div className="w-16 h-16 bg-yellow-100 rounded-full border-4 border-yellow-300 flex items-center justify-center text-yellow-600 text-2xl font-black shadow-xl mx-auto mb-2 relative">
+                  {rank1.avatar}
+                  {/* Badge YOU untuk Juara 1 */}
+                  {rank1.isCurrentUser && <span className="absolute -top-3 -right-3 text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full shadow-sm border-2 border-white z-10 font-bold animate-pulse">YOU</span>}
+                </div>
+                <p className="text-slate-800 font-black text-sm truncate w-24 mx-auto">{rank1.name}</p>
+                <p className="text-yellow-600 text-xs font-bold">{rank1.xp} XP</p>
+              </div>
+              <div className="w-full h-48 bg-yellow-400 rounded-t-3xl border-b-8 border-yellow-600 flex justify-center pt-4 shadow-2xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-500 delay-100">
+                <span className="text-6xl font-black text-yellow-300/50 absolute bottom-0">1</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* JUARA 3 (KANAN - PINK) */}
+        <div className="flex flex-col items-center w-1/3 max-w-[120px]">
+          {rank3 ? (
+            <>
+              <div className="mb-2 text-center animate-in slide-in-from-bottom-8 duration-1000">
+                <div className="w-12 h-12 bg-pink-100 rounded-full border-4 border-pink-300 flex items-center justify-center text-pink-600 font-black text-lg shadow-lg mx-auto mb-2 relative">
+                  {rank3.avatar}
+                  {/* Badge YOU untuk Juara 3 */}
+                  {rank3.isCurrentUser && <span className="absolute -top-2 -right-2 text-[8px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full shadow-sm border border-white z-10">YOU</span>}
+                </div>
+                <p className="text-slate-600 font-bold text-xs truncate w-20 mx-auto">{rank3.name}</p>
+                <p className="text-pink-500 text-[10px] font-bold">{rank3.xp} XP</p>
+              </div>
+              <div className="w-full h-24 bg-pink-400 rounded-t-3xl border-b-8 border-pink-600 flex justify-center pt-4 shadow-xl relative overflow-hidden animate-in slide-in-from-bottom-full duration-1000">
+                <span className="text-5xl font-black text-pink-300/50 absolute bottom-0">3</span>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-24 bg-slate-100 rounded-t-3xl border-b-8 border-slate-200 opacity-50 relative">
+              <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-4xl font-black text-slate-200">3</span>
+            </div>
+          )}
+        </div>
       </div>
+      {/* --- BAGIAN 3: LIST SISANYA (RANK 4 KE BAWAH) --- */}
+      {restOfPlayers.length > 0 ? (
+        <div className="bg-white rounded-3xl p-6 shadow-lg border border-slate-200/60 space-y-3">
+          {restOfPlayers.map((user, idx) => {
+            const rank = idx + 4;
+            return (
+              <div key={user.id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <span className="font-black text-slate-300 text-lg w-6">{rank}</span>
+                  <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-lg">{user.avatar}</div>
+                  <span className="font-bold text-slate-600">{user.name}</span>
+                </div>
+                <span className="font-bold text-slate-400 text-sm">{user.xp} XP</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 bg-slate-50/50">
+          {/* Placeholder kosong */}
+          <p className="font-bold text-sm">Belum ada rival lain...</p>
+          <p className="text-xs mt-1">Lawan masih loading, kamu rajanya sekarang! 👑</p>
+        </div>
+      )}
     </div>
   );
 };
@@ -948,7 +1078,7 @@ const DailyQuestWidget = ({ onOpenQuest, onComplete, onQuestLoaded, activeCourse
 };
 
 const ChatDrawer = ({ isOpen, onClose, topic }) => {
-  const [messages, setMessages] = useState([{ role: 'ai', text: `Hai kawan! Ada yang bingung soal ${topic}?` }]);
+  const [messages, setMessages] = useState([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal ${topic}?` }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -1154,6 +1284,57 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
   );
 };
 
+// --- KOMPONEN BARU: SETUP PROFIL (WAJIB ISI) ---
+const SetupProfileModal = ({ isOpen, onSave }) => {
+  const [name, setName] = useState("");
+
+  if (!isOpen) return null;
+
+  return (
+    // z-index 100 biar paling atas, backdrop gelap biar fokus
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 animate-in fade-in duration-700">
+      <div className="w-full max-w-md bg-white rounded-[40px] p-8 shadow-2xl border-8 border-white ring-4 ring-blue-500/30 text-center relative overflow-hidden">
+        {/* Hiasan Atas */}
+        <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+
+        <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-blue-100 shadow-inner animate-bounce">
+          <Zap size={48} className="text-blue-500" fill="currentColor" />
+        </div>
+
+        <h2 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">IDENTITAS BARU</h2>
+        <p className="text-slate-400 font-bold text-sm mb-8 leading-relaxed">
+          Selamat datang di sistem, Challenger! <br />
+          Masukkan kodename / nama panggilanmu untuk memulai.
+        </p>
+
+        <div className="space-y-4">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && name.trim().length > 0 && onSave(name)}
+            placeholder="Ketik nama keren..."
+            maxLength={12}
+            className="w-full bg-slate-100 border-4 border-slate-200 rounded-2xl px-4 py-4 text-center font-black text-xl text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all placeholder:text-slate-300"
+            autoFocus
+          />
+
+          <button
+            onClick={() => name.trim().length > 0 && onSave(name)}
+            disabled={name.trim().length === 0}
+            className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-black rounded-2xl border-b-8 border-blue-700 active:border-b-0 active:translate-y-2 transition-all btn-3d disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-xl shadow-blue-200"
+          >
+            MULAI PETUALANGAN 🚀
+          </button>
+
+          <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-4">
+            Setup Awal Sistem v1.0
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 export default function App() {
   const [user, setUser] = useState(null);
@@ -1217,6 +1398,38 @@ export default function App() {
     await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), { xp: increment(xp) });
   };
 
+  // Fungsi untuk menyimpan nama pertama kali
+  const handleInitialSetup = async (name) => {
+    if (!user) return;
+    const cleanName = name.trim().slice(0, 12); // Batasi 12 huruf
+
+    // Simpan ke Database Firestore
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
+      displayName: cleanName
+    });
+
+    // Update state lokal instan (biar modal langsung hilang tanpa nunggu loading)
+    setUserStats(prev => ({ ...prev, displayName: cleanName }));
+  };
+
+  // FITUR BARU: GANTI NAMA USER
+  const handleRename = async () => {
+    if (!user) return;
+    const newName = prompt("Masukkan nama panggilan baru kamu (Max 10 huruf):");
+
+    if (newName && newName.trim().length > 0) {
+      const cleanName = newName.trim().slice(0, 10); // Batasi 10 huruf biar ga kepanjangan
+
+      // Simpan ke Database
+      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
+        displayName: cleanName
+      });
+
+      // Update state lokal biar langsung berubah
+      setUserStats(prev => ({ ...prev, displayName: cleanName }));
+    }
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loading /></div>;
 
   return (
@@ -1225,6 +1438,8 @@ export default function App() {
 
         <Sidebar
           userStats={userStats}
+          userName={userStats.displayName || user?.uid.slice(0, 5) || "GUEST"}
+          onRename={handleRename} // <--- Oper fungsi rename ke sini
           currentView={currentView}
           setCurrentView={setCurrentView}
           onOpenCodeLab={() => setShowCodeLab(true)}
@@ -1233,9 +1448,30 @@ export default function App() {
         />
 
         <main className="flex-1 relative overflow-y-auto hide-scrollbar">
-          {/* Top Bar Mobile */}
-          <div className="md:hidden flex justify-between px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
-            <div className="flex items-center gap-2 font-black text-slate-700"><Zap className="text-blue-500" size={18} /> {userStats.xp} XP</div>
+          {/* Top Bar Mobile (SUDAH ADA FITUR RENAME) */}
+          <div className="md:hidden flex justify-between items-center px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
+
+            {/* Bagian Kiri: Nama User (Bisa Diklik buat Rename) */}
+            <button
+              onClick={handleRename}
+              className="flex items-center gap-3 active:scale-95 transition-transform"
+            >
+              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md shadow-blue-200">
+                <Zap size={20} fill="currentColor" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Challenger</p>
+                <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">
+                  @{userStats.displayName || user?.uid.slice(0, 5) || "KAMU"} ✏️
+                </h1>
+              </div>
+            </button>
+
+            {/* Bagian Kanan: XP */}
+            <div className="flex items-center gap-2 font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+              <Zap className="text-yellow-500 fill-yellow-500" size={16} />
+              {userStats.xp}
+            </div>
           </div>
 
           {currentView === 'learn' && (
@@ -1276,7 +1512,7 @@ export default function App() {
             <div className="pt-10 animate-in fade-in">
               <LeaderboardView
                 currentUserXP={userStats.xp}
-                currentUserName={user?.uid.slice(0, 5) || "KAMU"}
+                currentUserName={userStats.displayName || user?.uid.slice(0, 5) || "KAMU"}
                 currentUserWinRate={projectWinRate} // [BARU] Oper winrate ke leaderboard
               />
             </div>
@@ -1297,7 +1533,7 @@ export default function App() {
         <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} userId={user?.uid} userXP={userStats.xp} />
         <NeuralUplinkModal isOpen={showUplink} onClose={() => setShowUplink(false)} />
         <CheatSheetModal isOpen={!!activeCheatSheet} moduleTitle={activeCheatSheet} onClose={() => setActiveCheatSheet(null)} />
-
+        <SetupProfileModal isOpen={!loading && user && !userStats.displayName} onSave={handleInitialSetup} />
       </div>
     </>
   );
