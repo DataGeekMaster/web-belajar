@@ -2,7 +2,6 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc,
-  getDoc, deleteDoc,
   getFirestore,
   increment,
   onSnapshot,
@@ -323,7 +322,7 @@ const Loading = () => (
 
 // --- COMPONENTS & SIDEBAR ---
 
-const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink, isAnonymous }) => {
+const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink }) => {
   const projectWinRate = userStats.totalProjectsFinished > 0
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
@@ -350,16 +349,15 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
               @{userName} ✏️
             </button>
 
-            {/* LOGIKA BARU: TOMBOL SYNC HANYA MUNCUL JIKA ANONIM */}
-            {isAnonymous && (
-              <button
-                onClick={handleGoogleLogin}
-                className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-md font-bold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors animate-pulse"
-                title="Simpan Akun / Login"
-              >
-                ☁️ Sync
-              </button>
-            )}
+            {/* TOMBOL LOGIN / LOGOUT KECIL */}
+            {/* Kita cek: Kalau namanya masih angka acak (user?.uid), berarti belum login Google */}
+            <button
+              onClick={handleGoogleLogin} // Nanti pass prop ini dari App
+              className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-md font-bold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              title="Simpan Akun / Login"
+            >
+              ☁️ Sync
+            </button>
           </div>
         </div>
       </div>
@@ -403,27 +401,14 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
         <button onClick={onOpenUplink} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 font-bold transition-all"><Network size={24} /> <span className="hidden md:inline">Tanya Konsep</span></button>
       </nav>
 
-      <div className="hidden md:flex flex-col gap-3 px-4 mt-auto mb-4 w-full">
-
-        {/* 1. TOMBOL LOGOUT (Sekarang posisinya di ATAS statistik) */}
-        {!isAnonymous && (
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 text-[10px] font-black text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all uppercase tracking-widest border border-transparent hover:border-red-100"
-          >
-            <LogOut size={14} /> Keluar Sistem
-          </button>
-        )}
-
-        <div className="hidden md:block border-2 border-slate-100 rounded-[24px] p-5 bg-slate-50 mt-auto">
-          <h3 className="text-slate-400 text-xs font-black uppercase mb-4 tracking-wider">Statistik Kamu</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center"><span className="text-slate-500 flex items-center gap-2 font-bold"><Flame size={18} className="text-orange-500" fill="currentColor" /> XP</span><span className="text-slate-800 font-black text-lg">{userStats.xp || 0}</span></div>
-            <div className="flex justify-between items-center"><span className="text-slate-500 flex items-center gap-2 font-bold"><CheckCircle size={18} className="text-green-500" /> Selesai</span><span className="text-slate-800 font-black text-lg">{userStats.lessonsCompleted || 0}</span></div>
-            <div className="flex justify-between items-center pt-2 border-t border-slate-200 mt-2">
-              <span className="text-slate-500 flex items-center gap-2 font-bold text-xs uppercase"><Trophy size={16} className="text-purple-500" /> WR Proyek</span>
-              <span className={`font-black text-lg ${wrColor}`}>{projectWinRate}%</span>
-            </div>
+      <div className="hidden md:block border-2 border-slate-100 rounded-[24px] p-5 bg-slate-50 mt-auto">
+        <h3 className="text-slate-400 text-xs font-black uppercase mb-4 tracking-wider">Statistik Kamu</h3>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center"><span className="text-slate-500 flex items-center gap-2 font-bold"><Flame size={18} className="text-orange-500" fill="currentColor" /> XP</span><span className="text-slate-800 font-black text-lg">{userStats.xp || 0}</span></div>
+          <div className="flex justify-between items-center"><span className="text-slate-500 flex items-center gap-2 font-bold"><CheckCircle size={18} className="text-green-500" /> Selesai</span><span className="text-slate-800 font-black text-lg">{userStats.lessonsCompleted || 0}</span></div>
+          <div className="flex justify-between items-center pt-2 border-t border-slate-200 mt-2">
+            <span className="text-slate-500 flex items-center gap-2 font-bold text-xs uppercase"><Trophy size={16} className="text-purple-500" /> WR Proyek</span>
+            <span className={`font-black text-lg ${wrColor}`}>{projectWinRate}%</span>
           </div>
         </div>
       </div>
@@ -1326,7 +1311,7 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
   );
 };
 
-// --- KOMPONEN BARU: SETUP PROFIL ---
+// --- KOMPONEN BARU: SETUP PROFIL (WAJIB ISI) ---
 const SetupProfileModal = ({ isOpen, onSave }) => {
   const [name, setName] = useState("");
 
@@ -1378,12 +1363,12 @@ const SetupProfileModal = ({ isOpen, onSave }) => {
 };
 
 // --- KOMPONEN: HALAMAN LOGIN (GERBANG DEPAN) ---
-const WelcomeScreen = ({ onLogin, onGuestLogin }) => {
+const WelcomeScreen = ({ onLogin }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 animate-in fade-in duration-700">
       <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl overflow-hidden border-8 border-white ring-4 ring-blue-100 text-center">
 
-        {/* Header Visual */}
+        {/* Header Gambar / Ikon */}
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-10 flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
           <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-white/30">
@@ -1393,125 +1378,30 @@ const WelcomeScreen = ({ onLogin, onGuestLogin }) => {
           <p className="text-blue-100 font-medium text-sm mt-2">Platform Belajar Dengan AI #1</p>
         </div>
 
-        {/* Konten Tombol */}
+        {/* Konten Bawah */}
         <div className="p-8">
-          <h2 className="text-2xl font-black text-slate-800 mb-2">Pilih Akses Masuk</h2>
+          <h2 className="text-2xl font-black text-slate-800 mb-2">Siap Jadi Master?</h2>
           <p className="text-slate-500 mb-8 leading-relaxed text-sm">
-            Simpan progresmu selamanya dengan Google, atau coba dulu sebagai Tamu.
+            Masuk sekarang untuk simpan progres XP, naik rank global, dan akses materi premium.
           </p>
 
-          <div className="space-y-4">
-            {/* Tombol 1: Google */}
-            <button
-              onClick={onLogin}
-              className="w-full py-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md active:scale-95"
-            >
-              <svg className="w-6 h-6" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.11c-.22-.66-.35-1.36-.35-2.11s.13-1.45.35-2.11V7.05H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.95l3.66-2.84z" />
-                <path fill="#EA4335" d="M12 4.62c1.61 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              <span className="group-hover:text-blue-600">Masuk dengan Google</span>
-            </button>
+          <button
+            onClick={onLogin}
+            className="w-full py-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+          >
+            {/* Ikon Google Sederhana */}
+            <svg className="w-6 h-6" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.11c-.22-.66-.35-1.36-.35-2.11s.13-1.45.35-2.11V7.05H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.95l3.66-2.84z" />
+              <path fill="#EA4335" d="M12 4.62c1.61 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            <span className="group-hover:text-blue-600">Masuk dengan Google</span>
+          </button>
 
-            {/* Separator */}
-            <div className="flex items-center gap-4 opacity-50">
-              <div className="h-px bg-slate-300 flex-1"></div>
-              <span className="text-xs font-bold text-slate-400">ATAU</span>
-              <div className="h-px bg-slate-300 flex-1"></div>
-            </div>
-
-            {/* Tombol 2: Tamu / Anonim */}
-            <button
-              onClick={onGuestLogin}
-              className="w-full py-4 bg-slate-800 text-white hover:bg-slate-700 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all shadow-lg shadow-slate-300 active:scale-95"
-            >
-              <Zap size={20} className="text-yellow-400 fill-yellow-400" />
-              <span>Lanjut Sebagai Tamu</span>
-            </button>
-          </div>
-
-          <p className="mt-6 text-[10px] text-slate-400 font-bold text-center leading-tight">
-            *Data tamu tersimpan di perangkat ini saja.<br />Jika cache dihapus, progres hilang.
+          <p className="mt-6 text-xs text-slate-400 font-bold uppercase tracking-wider">
+            Tidak perlu daftar • Gratis selamanya
           </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const SyncConfirmationModal = ({ isOpen, onMerge, onSeparate, onClose }) => {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4 animate-in zoom-in-95">
-      <div className="bg-white w-full max-w-md rounded-[32px] p-8 text-center border-4 border-white ring-4 ring-blue-500">
-        <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-          <RefreshCw size={32} />
-        </div>
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Simpan Progres Tamu?</h2>
-        <p className="text-slate-500 text-sm font-semibold mb-8">
-          Kami mendeteksi kamu punya data XP sebagai Tamu. Mau digabung ke akun Google barumu?
-        </p>
-        <div className="space-y-3">
-          <button onClick={onMerge} className="w-full py-3 bg-blue-500 hover:bg-blue-400 text-white font-black rounded-xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 btn-3d transition-all">
-            YA, GABUNGKAN DATA 🚀
-          </button>
-          <button onClick={onSeparate} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold rounded-xl transition-all">
-            TIDAK, MULAI LEMBARAN BARU
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ConflictModal = ({ isOpen, localStats, remoteStats, onKeepRemote, onCancel }) => {
-  if (!isOpen) return null;
-
-  const remoteWR = remoteStats.totalProjectsFinished > 0
-    ? Math.round((remoteStats.totalProjectScore || 0) / remoteStats.totalProjectsFinished)
-    : 0;
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4 animate-in zoom-in-95">
-      <div className="bg-white w-full max-w-lg rounded-[32px] p-8 text-center border-8 border-white ring-4 ring-orange-500 relative overflow-hidden">
-
-        <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-          <AlertTriangle size={32} />
-        </div>
-
-        <h2 className="text-2xl font-black text-slate-800 mb-2">Akun Lama Ditemukan!</h2>
-        <p className="text-slate-500 text-sm font-semibold mb-6">
-          Email ini sudah terdaftar sebagai <strong>{remoteStats.displayName}</strong>.
-          <br />Pilih akun mana yang ingin dimainkan?
-        </p>
-
-        {/* PERBANDINGAN DATA */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
-          {/* Data Tamu (Saat Ini) */}
-          <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-200">
-            <p className="text-[10px] font-black uppercase text-slate-400 mb-2">GUEST SAAT INI</p>
-            <div className="text-xl font-black text-slate-600">{localStats.xp} XP</div>
-            <div className="text-xs font-bold text-slate-400">Level Kamu</div>
-          </div>
-
-          {/* Data Google (Lama) */}
-          <div className="p-4 bg-orange-50 rounded-2xl border-2 border-orange-200 relative">
-            <div className="absolute -top-3 -right-2 bg-green-500 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">DISARANKAN</div>
-            <p className="text-[10px] font-black uppercase text-orange-400 mb-2">AKUN GOOGLE</p>
-            <div className="text-xl font-black text-orange-600">{remoteStats.xp} XP</div>
-            <div className="text-xs font-bold text-orange-400">Winrate: {remoteWR}%</div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <button onClick={onKeepRemote} className="w-full py-4 bg-orange-500 hover:bg-orange-400 text-white font-black rounded-xl border-b-4 border-orange-700 active:border-b-0 active:translate-y-1 btn-3d transition-all">
-            YA, GUNAKAN AKUN GOOGLE ✅
-          </button>
-          <button onClick={onCancel} className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold rounded-xl transition-all">
-            BATALKAN (Kembali ke Awal)
-          </button>
         </div>
       </div>
     </div>
@@ -1522,7 +1412,6 @@ const ConflictModal = ({ isOpen, localStats, remoteStats, onKeepRemote, onCancel
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [userProgress, setUserProgress] = useState({});
   const [userStats, setUserStats] = useState({ xp: 0, lessonsCompleted: 0 });
   const [activeLesson, setActiveLesson] = useState(null);
@@ -1541,11 +1430,6 @@ export default function App() {
   const [showUplink, setShowUplink] = useState(false);
   const [activeCheatSheet, setActiveCheatSheet] = useState(null);
 
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [showConflictModal, setShowConflictModal] = useState(false);
-  const [conflictData, setConflictData] = useState({ local: null, remote: null });
-  const [pendingGoogleLogin, setPendingGoogleLogin] = useState(false); // Trigger penanda
-
   const activeCourse = COURSES_DATA.find(c => c.id === activeCourseId) || COURSES_DATA[0];
   const activeTheme = getTheme(activeCourse.color);
 
@@ -1554,116 +1438,34 @@ export default function App() {
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
 
-  // --- AUTH & DATA SYNC (VERSI PERBAIKAN) ---
-
-  // 1. useEffect PERTAMA: Khusus menangani Login/Logout (Supaya Loading cepat hilang)
+  // Auth & Data Sync (MODE: ANTI-HANTU / KILL SWITCH)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) {
-        setUser(u);
+      // Cek: Apakah user ada? DAN Apakah dia Anonymous (Hantu)?
+      if (u && u.isAnonymous) {
+        // KICK DIA KELUAR! 🦶
+        console.warn("Mendeteksi akun hantu. Auto-logout...");
+        signOut(auth).then(() => {
+          setUser(null); // Set kosong biar WelcomeScreen muncul
+        });
       } else {
-        setUser(null);
-        setUserStats({ xp: 0, lessonsCompleted: 0 });
+        // Kalau User Google (Asli) atau belum login sama sekali
+        setUser(u);
       }
-      // PENTING: Apapun yang terjadi (sukses/gagal), Loading HARUS berhenti di sini
       setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // 2. useEffect KEDUA: Khusus mengambil Data Database (Hanya jalan kalau user sudah login)
-  useEffect(() => {
-    if (!user) return; // Kalau gak ada user, gak usah jalan
-
-    // A. Ambil Stats
-    const statsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main');
-    const unsubStats = onSnapshot(statsRef, (s) => {
-      if (s.exists()) {
-        setUserStats(s.data());
-      } else {
-        // Init stats jika user baru
-        setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
-      }
-
-      // --- TAMBAHAN PENTING ---
-      // Beri tahu aplikasi bahwa data sudah selesai dimuat agar modal nama tidak muncul sembarangan
-      setIsDataLoaded(true);
-      // ------------------------
-
-    }, (error) => {
-      console.error("Error mengambil Stats:", error);
-      setIsDataLoaded(true); // Tetap set true biar gak loading selamanya kalau error
-    });
-
-    // B. Ambil Progress
-    const progRef = collection(db, 'artifacts', appId, 'users', user.uid, 'progress');
-    const unsubProg = onSnapshot(progRef, (s) => {
-      const p = {};
-      s.forEach(d => p[d.id] = d.data());
-      setUserProgress(p);
-    }, (error) => {
-      console.error("Error mengambil Progress:", error);
-    });
-
-    // Cleanup listeners saat user logout/ganti
-    return () => {
-      unsubStats();
-      unsubProg();
-    };
-  }, [user]);
-  // --- 2. LOGIC DATABASE & AUTO-RESTORE (ANTI-RESET) ---
-
-  // A. Logic Simpan Backup Tamu ke HP setiap kali XP/Stats berubah
-  useEffect(() => {
-    // Hanya backup jika user adalah Tamu dan punya progress (XP > 0)
-    if (user && user.isAnonymous && userStats.xp > 0) {
-      localStorage.setItem('guest_backup', JSON.stringify(userStats));
-    }
-  }, [user, userStats]);
-
-  // B. Logic Ambil Data Database & Restore Backup jika perlu
   useEffect(() => {
     if (!user) return;
-
-    // Ambil Stats
-    const statsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main');
-    const unsubStats = onSnapshot(statsRef, (s) => {
-      if (s.exists()) {
-        // KASUS 1: Data ada di database (User Lama / Google) -> Pakai data itu
-        setUserStats(s.data());
-      } else {
-        // KASUS 2: Data KOSONG di Database (Tamu Baru / Reset)
-        // Cek apakah ada backup data tamu di HP?
-        const savedBackup = localStorage.getItem('guest_backup');
-
-        if (user.isAnonymous && savedBackup) {
-          // RESTORE DATA LAMA! (Solusi agar progress kembali)
-          try {
-            const backupData = JSON.parse(savedBackup);
-            // Tulis data backup ke ID Tamu yang baru ini
-            setDoc(statsRef, backupData, { merge: true });
-            // Update tampilan langsung biar cepat
-            setUserStats(backupData);
-          } catch (e) {
-            console.error("Gagal restore backup", e);
-            setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
-          }
-        } else {
-          // Benar-benar user baru (tidak ada backup)
-          setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
-        }
-      }
-      // PENTING: Kunci agar modal nama tidak muncul sembarangan
-      setIsDataLoaded(true);
+    const unsubStats = onSnapshot(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), s => {
+      if (s.exists()) setUserStats(s.data());
+      else setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), { xp: 0, lessonsCompleted: 0 });
     });
-
-    // Ambil Progress (Tetap sama)
-    const progRef = collection(db, 'artifacts', appId, 'users', user.uid, 'progress');
-    const unsubProg = onSnapshot(progRef, (s) => {
-      const p = {}; s.forEach(d => p[d.id] = d.data());
-      setUserProgress(p);
+    const unsubProg = onSnapshot(collection(db, 'artifacts', appId, 'users', user.uid, 'progress'), s => {
+      const p = {}; s.forEach(d => p[d.id] = d.data()); setUserProgress(p);
     });
-
     return () => { unsubStats(); unsubProg(); };
   }, [user]);
 
@@ -1678,118 +1480,38 @@ export default function App() {
     await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), { xp: increment(xp) });
   };
 
-  // Helper: Eksekusi Login Google Sebenarnya
-  const performGoogleSignIn = async (shouldMergeAnonData) => {
-    const provider = new GoogleAuthProvider();
-    // Simpan stats tamu saat ini ke memori sementara
-    const currentGuestStats = { ...userStats };
-    const currentGuestID = user ? user.uid : null;
-
-    try {
-      // Login Google
-      const result = await signInWithPopup(auth, provider);
-      const googleUser = result.user;
-
-      // Cek Konflik Data di Akun Google
-      const googleStatsRef = doc(db, 'artifacts', appId, 'users', googleUser.uid, 'stats', 'main');
-      const googleStatsSnap = await getDoc(googleStatsRef);
-
-      // JIKA KONFLIK (Google sudah ada isinya > 0 XP)
-      if (shouldMergeAnonData && googleStatsSnap.exists() && googleStatsSnap.data().xp > 0) {
-        setConflictData({ local: currentGuestStats, remote: googleStatsSnap.data() });
-        setShowConflictModal(true);
-        setShowSyncModal(false);
-        return; // STOP! Jangan hapus backup, jangan merge.
-      }
-
-      // JIKA MERGE LANCAR (Google kosong atau User minta merge)
-      if (shouldMergeAnonData) {
-        const finalName = googleUser.displayName || currentGuestStats.displayName || "Challenger";
-
-        await setDoc(googleStatsRef, {
-          ...currentGuestStats,
-          displayName: finalName,
-          mergedAt: serverTimestamp()
-        }, { merge: true });
-
-        // Hapus data ID tamu lama di database (opsional, biar bersih)
-        if (currentGuestID) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'users', currentGuestID, 'stats', 'main'));
-        }
-
-        // PENTING: Hapus backup di HP karena data sudah aman pindah ke Google
-        localStorage.removeItem('guest_backup');
-      }
-
-      setShowSyncModal(false);
-
-    } catch (error) {
-      console.error("Login Error:", error);
-    }
-  };
-
-  // --- ACTIONS UNTUK MODAL KONFLIK ---
-
-  // Pilihan 1: "Ya, Gunakan Akun Google"
-  const resolveConflictUseRemote = () => {
-    // Saat ini posisi user SUDAH login sebagai Google (karena signInWithPopup sudah sukses di awal).
-    // Kita hanya perlu menutup modal.
-    // Tampilan otomatis refresh ke data Google (50 XP) karena useEffect mendeteksi user Google.
-
-    // PENTING: Kita TIDAK menjalankan deleteDoc untuk Guest ID.
-    // Jadi data Guest 2 (10 XP) tetap aman di database (orphaned), sesuai request "jangan dibuang datanya".
-
-    setShowConflictModal(false);
-    alert(`Berhasil beralih ke akun ${conflictData.remote.displayName}!`);
-  };
-
-  // Pilihan 2: "Batalkan"
-  const resolveConflictCancel = async () => {
-    // User ingin membatalkan penggunaan akun Google ini.
-    // Kita Logout dari Google.
-    await signOut(auth);
-
-    // User akan kembali ke WelcomeScreen.
-    // Data Guest 2 juga TIDAK dihapus.
-
-    setShowConflictModal(false);
-  };
-
   // Fungsi untuk menyimpan nama pertama kali
   const handleInitialSetup = async (name) => {
     if (!user) return;
-    const cleanName = name.trim().slice(0, 12);
-    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
-      displayName: cleanName
-    }, { merge: true });
-    setUserStats(prev => ({ ...prev, displayName: cleanName }));
-  };
+    const cleanName = name.trim().slice(0, 12); // Batasi 12 huruf
 
-  const handleGuestLogin = async () => {
-    setLoading(true);
-    try {
-      await signInAnonymously(auth);
-    } catch (error) {
-      console.error(error);
-    }
-    setLoading(false);
+    // Simpan ke Database Firestore
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
+      displayName: cleanName
+    });
+
+    // Update state lokal instan (biar modal langsung hilang tanpa nunggu loading)
+    setUserStats(prev => ({ ...prev, displayName: cleanName }));
   };
 
   // --- FITUR LOGIN GOOGLE (SYNC DATA) ---
   const handleGoogleLogin = async () => {
-    if (user && user.isAnonymous) {
-      // Jika sedang Anonim, tanya dulu
-      setShowSyncModal(true);
-    } else {
-      // Belum login sama sekali, langsung pop-up
-      performGoogleSignIn(false);
+    const provider = new GoogleAuthProvider();
+    try {
+      // Ini ajaib: Kalau akunmu Anonim, dia bakal coba nge-link ke Google.
+      // Kalau Google-nya udah pernah dipake, dia bakal login biasa.
+      await signInWithPopup(auth, provider);
+      window.location.reload(); // Refresh biar data terbaru dimuat
+    } catch (error) {
+      console.error("Gagal Login:", error);
+      alert("Gagal login Google. Cek konsol.");
     }
   };
 
   const handleLogout = async () => {
     if (confirm("Yakin mau logout?")) {
       await signOut(auth);
-      // Setelah logout, otomatis akan kembali ke WelcomeScreen karena user jadi null
+      window.location.reload(); // Refresh biar jadi akun baru/anonim lagi
     }
   };
 
@@ -1797,65 +1519,95 @@ export default function App() {
   const handleRename = async () => {
     if (!user) return;
     const newName = prompt("Masukkan nama panggilan baru kamu (Max 10 huruf):");
+
     if (newName && newName.trim().length > 0) {
-      handleInitialSetup(newName);
+      const cleanName = newName.trim().slice(0, 10); // Batasi 10 huruf biar ga kepanjangan
+
+      // Simpan ke Database
+      await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
+        displayName: cleanName
+      });
+
+      // Update state lokal biar langsung berubah
+      setUserStats(prev => ({ ...prev, displayName: cleanName }));
     }
   };
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loading /></div>;
 
-  // 1. Gerbang Depan (Jika belum login)
+  // 2. [BARU] Belum Login? Tampilkan Gerbang Depan
   if (!user) {
-    return <WelcomeScreen onLogin={() => handleGoogleLogin()} onGuestLogin={handleGuestLogin} />;
+    return <WelcomeScreen onLogin={handleGoogleLogin} />;
   }
 
-  // 2. Dashboard Aplikasi
+  // 3. Sudah Login? Tampilkan Aplikasi Utama
   return (
     <>
       <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-pink-200 selection:text-pink-900">
 
         <Sidebar
           userStats={userStats}
-          userName={userStats.displayName || "Loading..."}
-          onRename={handleRename}
+          userName={userStats.displayName || user?.uid.slice(0, 5) || "GUEST"}
+          onRename={handleRename} // <--- Oper fungsi rename ke sini
           handleGoogleLogin={handleGoogleLogin}
-          onLogout={handleLogout}
           currentView={currentView}
           setCurrentView={setCurrentView}
           onOpenCodeLab={() => setShowCodeLab(true)}
           onOpenProject={() => setShowProjectModal(true)}
           onOpenUplink={() => setShowUplink(true)}
-          isAnonymous={user.isAnonymous}
         />
 
         <main className="flex-1 relative overflow-y-auto hide-scrollbar">
-          {/* Header Mobile */}
+          {/* Top Bar Mobile (SUDAH ADA FITUR RENAME) */}
           <div className="md:hidden flex justify-between items-center px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
+
+            {/* Bagian Kiri: Nama User (Bisa Diklik buat Rename) */}
             <div className="flex items-center gap-2">
-              <button onClick={handleRename} className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white">
+              {/* ... Avatar & Nama ... */}
+              <button
+                onClick={handleRename}
+                className="flex items-center gap-3 active:scale-95 transition-transform"
+              >
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md shadow-blue-200">
                   <Zap size={20} fill="currentColor" />
                 </div>
                 <div className="text-left">
                   <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Challenger</p>
-                  <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">@{userStats.displayName || "KAMU"}</h1>
+                  <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">
+                    @{userStats.displayName || user?.uid.slice(0, 5) || "KAMU"} ✏️
+                  </h1>
                 </div>
               </button>
+
+              {/* TOMBOL SYNC DI HP */}
+              <button
+                onClick={handleGoogleLogin}
+                className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:bg-blue-100 hover:text-blue-500 transition-colors"
+              >
+                <span className="text-xs">☁️</span>
+              </button>
             </div>
+
+            {/* Bagian Kanan: XP */}
             <div className="flex items-center gap-2 font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <Zap className="text-yellow-500 fill-yellow-500" size={16} /> {userStats.xp}
+              <Zap className="text-yellow-500 fill-yellow-500" size={16} />
+              {userStats.xp}
             </div>
           </div>
 
           {currentView === 'learn' && (
             <div className="px-4 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              {/* Course Header */}
               <div className="max-w-2xl mx-auto pt-10 text-center mb-8">
-                <button onClick={() => setShowProtocolModal(true)} className="group relative inline-block transition-transform hover:scale-105">
-                  <div className={`w-20 h-20 mx-auto mb-4 rounded-3xl flex items-center justify-center text-white shadow-xl ${getTheme(activeCourse.color).shadow} transition-colors ${getTheme(activeCourse.color).bg}`}>
+                <button
+                  onClick={() => setShowProtocolModal(true)}
+                  className="group relative inline-block transition-transform hover:scale-105"
+                >
+                  <div className={`w-20 h-20 mx-auto mb-4 rounded-3xl flex items-center justify-center text-white shadow-xl ${activeTheme.shadow} transition-colors ${activeTheme.bg}`}>
                     {activeCourse.icon}
                   </div>
                   <h2 className="text-3xl font-black text-slate-800 mb-1">{activeCourse.title}</h2>
-                  <p className={`font-bold text-sm flex items-center justify-center gap-1 transition-colors ${getTheme(activeCourse.color).text}`}>
+                  <p className={`font-bold text-sm flex items-center justify-center gap-1 transition-colors ${activeTheme.text}`}>
                     Ganti Materi <ArrowRight size={14} />
                   </p>
                 </button>
@@ -1867,6 +1619,7 @@ export default function App() {
                 onOpenQuest={() => setShowQuestModal(true)}
                 onComplete={() => { }}
               />
+
               <CourseMap
                 activeCourse={activeCourse}
                 userProgress={userProgress}
@@ -1876,42 +1629,31 @@ export default function App() {
             </div>
           )}
 
-          {currentView === 'leaderboard' && <LeaderboardView db={db} userId={user.uid} />}
+          {currentView === 'leaderboard' && (
+            <div className="pt-10 animate-in fade-in">
+              <LeaderboardView
+                db={db}
+                userId={user?.uid}
+              />
+            </div>
+          )}
         </main>
 
-        {/* --- MODAL AREA --- */}
-
-        {/* MODAL WAJIB: Setup Nama */}
-        <SetupProfileModal
-          isOpen={!loading && isDataLoaded && user && !userStats.displayName}
-          onSave={handleInitialSetup}
-        />
-
-        {/* MODAL BARU: Konfirmasi Merge */}
-        <SyncConfirmationModal
-          isOpen={showSyncModal}
-          onMerge={() => performGoogleSignIn(true)}
-          onSeparate={() => performGoogleSignIn(false)}
-          onClose={() => setShowSyncModal(false)}
-        />
-
-        <ConflictModal
-          isOpen={showConflictModal}
-          localStats={conflictData.local || { xp: 0 }}
-          remoteStats={conflictData.remote || { xp: 0, displayName: 'User' }}
-          onKeepRemote={resolveConflictUseRemote}
-          onCancel={resolveConflictCancel}
-        />
-
+        {/* All Modals */}
         <ProtocolSelectModal isOpen={showProtocolModal} onClose={() => setShowProtocolModal(false)} activeCourseId={activeCourseId} onSelectCourse={setActiveCourseId} />
+
         {activeLesson && <CyberLessonModal lesson={activeLesson} courseTitle={activeCourse.title} onClose={() => { setActiveLesson(null); setShowChat(false); }} onComplete={handleLessonComplete} onOpenChat={() => setShowChat(true)} />}
+
         <CodeLabModal isOpen={showCodeLab} onClose={() => setShowCodeLab(false)} activeCourse={activeCourse} />
+
         <ChatDrawer isOpen={showChat} onClose={() => setShowChat(false)} topic={activeLesson ? activeLesson.title : ''} />
+
         {showQuestModal && activeQuest && <QuestSolverModal quest={activeQuest} onClose={() => setShowQuestModal(false)} onComplete={handleQuestComplete} />}
-        <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} userId={user.uid} userXP={userStats.xp} />
+
+        <ProjectModal isOpen={showProjectModal} onClose={() => setShowProjectModal(false)} userId={user?.uid} userXP={userStats.xp} />
         <NeuralUplinkModal isOpen={showUplink} onClose={() => setShowUplink(false)} />
         <CheatSheetModal isOpen={!!activeCheatSheet} moduleTitle={activeCheatSheet} onClose={() => setActiveCheatSheet(null)} />
-
+        <SetupProfileModal isOpen={!loading && user && !userStats.displayName} onSave={handleInitialSetup} />
       </div>
     </>
   );
