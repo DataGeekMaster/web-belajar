@@ -4,13 +4,13 @@ import { Terminal, BarChart2 } from 'lucide-react';
 export const COURSES_DATA = [
     {
         id: "python_protocol",
-        title: "PROTOKOL PYTHON",
+        title: "PYTHON",
         icon: <Terminal size={24} />,
         description: "Kuasai bahasa mesin. Bangun backend, skrip, dan model AI.",
         color: "blue",
         codeConfig: {
             language: "Python",
-            defaultCode: "print('Halo Dunia dari Protokol Python')",
+            defaultCode: "print('Halo Dunia dari Python')",
             placeholder: "Masukkan Kode Python..."
         },
         modules: [
@@ -38,7 +38,7 @@ export const COURSES_DATA = [
     },
     {
         id: "stats_stream",
-        title: "ALIRAN STATISTIKA",
+        title: "STATISTIKA",
         icon: <BarChart2 size={24} />,
         description: "Pecahkan pola realitas. Analisis distribusi data dan probabilitas.",
         color: "pink",

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc,
   getFirestore,
@@ -20,6 +20,7 @@ import {
   FileText,
   Flame,
   Lock,
+  LogOut,
   MessageSquare,
   Network,
   Play,
@@ -317,7 +318,7 @@ const Loading = () => (
 
 // --- COMPONENTS & SIDEBAR ---
 
-const Sidebar = ({ userStats, userName, onRename, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink }) => {
+const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink }) => {
   const projectWinRate = userStats.totalProjectsFinished > 0
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
@@ -338,10 +339,22 @@ const Sidebar = ({ userStats, userName, onRename, currentView, setCurrentView, o
 
         <div className="text-left">
           <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none">Level<span className="text-blue-500">Up</span></h1>
-          {/* Tampilkan Nama User di sini */}
-          <button onClick={onRename} className="text-xs font-bold text-slate-400 hover:text-blue-500 transition-colors text-left truncate max-w-[120px]">
-            @{userName} ✏️
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Tampilkan Nama User di sini */}
+            <button onClick={onRename} className="text-xs font-bold text-slate-400 hover:text-blue-500 transition-colors text-left truncate max-w-[120px]">
+              @{userName} ✏️
+            </button>
+
+            {/* TOMBOL LOGIN / LOGOUT KECIL */}
+            {/* Kita cek: Kalau namanya masih angka acak (user?.uid), berarti belum login Google */}
+            <button
+              onClick={handleGoogleLogin} // Nanti pass prop ini dari App
+              className="text-[10px] bg-white border border-slate-200 px-2 py-0.5 rounded-md font-bold text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              title="Simpan Akun / Login"
+            >
+              ☁️ Sync
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1335,6 +1348,52 @@ const SetupProfileModal = ({ isOpen, onSave }) => {
   );
 };
 
+// --- KOMPONEN: HALAMAN LOGIN (GERBANG DEPAN) ---
+const WelcomeScreen = ({ onLogin }) => {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 animate-in fade-in duration-700">
+      <div className="max-w-md w-full bg-white rounded-[40px] shadow-2xl overflow-hidden border-8 border-white ring-4 ring-blue-100 text-center">
+
+        {/* Header Gambar / Ikon */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-10 flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+          <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-white/30">
+            <Zap size={48} className="text-yellow-300 fill-yellow-300 drop-shadow-md" />
+          </div>
+          <h1 className="text-3xl font-black text-white tracking-tight">Level<span className="text-yellow-300">Up</span></h1>
+          <p className="text-blue-100 font-medium text-sm mt-2">Platform Belajar Dengan AI #1</p>
+        </div>
+
+        {/* Konten Bawah */}
+        <div className="p-8">
+          <h2 className="text-2xl font-black text-slate-800 mb-2">Siap Jadi Master?</h2>
+          <p className="text-slate-500 mb-8 leading-relaxed text-sm">
+            Masuk sekarang untuk simpan progres XP, naik rank global, dan akses materi premium.
+          </p>
+
+          <button
+            onClick={onLogin}
+            className="w-full py-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:bg-blue-50 text-slate-700 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all group shadow-sm hover:shadow-md"
+          >
+            {/* Ikon Google Sederhana */}
+            <svg className="w-6 h-6" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+              <path fill="#FBBC05" d="M5.84 14.11c-.22-.66-.35-1.36-.35-2.11s.13-1.45.35-2.11V7.05H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.95l3.66-2.84z" />
+              <path fill="#EA4335" d="M12 4.62c1.61 0 3.06.56 4.21 1.64l3.15-3.15C17.45 1.09 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.05l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+            </svg>
+            <span className="group-hover:text-blue-600">Masuk dengan Google</span>
+          </button>
+
+          <p className="mt-6 text-xs text-slate-400 font-bold uppercase tracking-wider">
+            Tidak perlu daftar • Gratis selamanya
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- MAIN APP ---
 export default function App() {
   const [user, setUser] = useState(null);
@@ -1365,14 +1424,23 @@ export default function App() {
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
 
-  // Auth & Data Sync (Preserved)
+  // Auth & Data Sync (MODE: ANTI-HANTU / KILL SWITCH)
   useEffect(() => {
-    const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
-      else await signInAnonymously(auth);
-    };
-    initAuth();
-    return onAuthStateChanged(auth, (u) => { setUser(u); setLoading(false); });
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      // Cek: Apakah user ada? DAN Apakah dia Anonymous (Hantu)?
+      if (u && u.isAnonymous) {
+        // KICK DIA KELUAR! 🦶
+        console.warn("Mendeteksi akun hantu. Auto-logout...");
+        signOut(auth).then(() => {
+          setUser(null); // Set kosong biar WelcomeScreen muncul
+        });
+      } else {
+        // Kalau User Google (Asli) atau belum login sama sekali
+        setUser(u);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -1412,6 +1480,27 @@ export default function App() {
     setUserStats(prev => ({ ...prev, displayName: cleanName }));
   };
 
+  // --- FITUR LOGIN GOOGLE (SYNC DATA) ---
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      // Ini ajaib: Kalau akunmu Anonim, dia bakal coba nge-link ke Google.
+      // Kalau Google-nya udah pernah dipake, dia bakal login biasa.
+      await signInWithPopup(auth, provider);
+      window.location.reload(); // Refresh biar data terbaru dimuat
+    } catch (error) {
+      console.error("Gagal Login:", error);
+      alert("Gagal login Google. Cek konsol.");
+    }
+  };
+
+  const handleLogout = async () => {
+    if (confirm("Yakin mau logout?")) {
+      await signOut(auth);
+      window.location.reload(); // Refresh biar jadi akun baru/anonim lagi
+    }
+  };
+
   // FITUR BARU: GANTI NAMA USER
   const handleRename = async () => {
     if (!user) return;
@@ -1432,6 +1521,12 @@ export default function App() {
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50"><Loading /></div>;
 
+  // 2. [BARU] Belum Login? Tampilkan Gerbang Depan
+  if (!user) {
+    return <WelcomeScreen onLogin={handleGoogleLogin} />;
+  }
+
+  // 3. Sudah Login? Tampilkan Aplikasi Utama
   return (
     <>
       <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-pink-200 selection:text-pink-900">
@@ -1440,6 +1535,7 @@ export default function App() {
           userStats={userStats}
           userName={userStats.displayName || user?.uid.slice(0, 5) || "GUEST"}
           onRename={handleRename} // <--- Oper fungsi rename ke sini
+          handleGoogleLogin={handleGoogleLogin}
           currentView={currentView}
           setCurrentView={setCurrentView}
           onOpenCodeLab={() => setShowCodeLab(true)}
@@ -1452,20 +1548,31 @@ export default function App() {
           <div className="md:hidden flex justify-between items-center px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
 
             {/* Bagian Kiri: Nama User (Bisa Diklik buat Rename) */}
-            <button
-              onClick={handleRename}
-              className="flex items-center gap-3 active:scale-95 transition-transform"
-            >
-              <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md shadow-blue-200">
-                <Zap size={20} fill="currentColor" />
-              </div>
-              <div className="text-left">
-                <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Challenger</p>
-                <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">
-                  @{userStats.displayName || user?.uid.slice(0, 5) || "KAMU"} ✏️
-                </h1>
-              </div>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* ... Avatar & Nama ... */}
+              <button
+                onClick={handleRename}
+                className="flex items-center gap-3 active:scale-95 transition-transform"
+              >
+                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-md shadow-blue-200">
+                  <Zap size={20} fill="currentColor" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Challenger</p>
+                  <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">
+                    @{userStats.displayName || user?.uid.slice(0, 5) || "KAMU"} ✏️
+                  </h1>
+                </div>
+              </button>
+
+              {/* TOMBOL SYNC DI HP */}
+              <button
+                onClick={handleGoogleLogin}
+                className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 hover:bg-blue-100 hover:text-blue-500 transition-colors"
+              >
+                <span className="text-xs">☁️</span>
+              </button>
+            </div>
 
             {/* Bagian Kanan: XP */}
             <div className="flex items-center gap-2 font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
