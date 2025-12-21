@@ -1,20 +1,43 @@
-import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
 import {
-  getFirestore, collection, doc, setDoc, getDoc, onSnapshot,
-  serverTimestamp, updateDoc, increment
+  collection, doc,
+  getFirestore,
+  increment,
+  onSnapshot,
+  serverTimestamp,
+  setDoc,
+  updateDoc
 } from 'firebase/firestore';
 import {
-  BookOpen, CheckCircle, Lock, Star, Zap, MessageSquare,
-  ArrowRight, X, RefreshCw, Trophy, Flame, Code, Terminal, Sparkles, Lightbulb,
-  FileText, Rocket, Play, Crown, Cpu, Activity, Disc, Shield, Grid, BarChart2,
-  Layers, Search, Database, AlertTriangle, Network, FastForward, Heart, Monitor
+  AlertTriangle,
+  ArrowRight,
+  BarChart2,
+  BookOpen, CheckCircle,
+  Code,
+  Crown,
+  FileText,
+  Flame,
+  Lock,
+  MessageSquare,
+  Network,
+  Play,
+  RefreshCw,
+  Rocket,
+  Search,
+  Shield,
+  Sparkles,
+  Star,
+  Terminal,
+  Trophy,
+  X,
+  Zap
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 // --- CONFIGURATION ---
-const GEMINI_API_KEY = ""; // Masukkan API Key Gemini
-const GROQ_API_KEY = "";   // Masukkan API Key Groq (Opsional, buat cadangan)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
 // --- AI STRATEGY CONFIGURATION ---
 // Tentukan urutan prioritas AI. ['gemini', 'groq'] artinya coba Gemini dulu, kalau gagal baru Groq.
@@ -22,16 +45,17 @@ const AI_PRIORITY = ["gemini", "groq"];
 
 // Variabel Model Gemini (Untuk mengatasi jika model utama limit/error)
 const GEMINI_MODELS = [
-  "gemini-2.0-flash-exp", // Paling baru & cepat (Experimental)
-  "gemini-1.5-flash",     // Stabil & Cepat
-  "gemini-1.5-pro"        // Lebih pintar tapi agak lambat
+  "gemini-3-flash", // Paling baru & cepat (Experimental)
+  "gemini-2.5-flash",     // Stabil & Cepat
+  "gemini-2.5-flash-lite"        // Lebih pintar tapi agak lambat
 ];
 
 // Variabel Model Groq (Super cepat untuk fallback)
 const GROQ_MODELS = [
-  "llama3-70b-8192",      // Sangat pintar & cepat
-  "mixtral-8x7b-32768",   // Bagus untuk logika
-  "gemma2-9b-it"          // Ringan
+  "moonshotai/kimi-k2-instruct-0905",             // Tier 1: Paling Cerdas (Reasoning & Logika Dewa)
+  "openai/gpt-oss-120b",                          // Tier 2: Spesialis Coding & Math (Setara o4-mini)
+  "meta-llama/llama-4-maverick-17b-128e-instruct", // Tier 3: All-Rounder Stabil (Generasi Llama 4)
+  "llama-3.3-70b-versatile"
 ];
 
 // --- FIREBASE SETUP ---
