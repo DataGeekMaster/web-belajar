@@ -14,6 +14,8 @@ dist-ssr
 
 #di src/old_app tidak perlu diikutkan
 src/old_app.jsx
+src/data/data_extractor_toJson.py
+
 
 # Editor directories and files
 .vscode/*
