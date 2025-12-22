@@ -85,7 +85,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
 
-// --- UTILS: MARKDOWN SIMPLIFIER (FIXED READABILITY) ---
+// --- UTILS: MARKDOWN SIMPLIFIER (UPDATED WITH BLOCKQUOTE & HR) ---
 const parseInline = (text) => {
   if (!text || typeof text !== 'string') return null;
 
@@ -96,19 +96,19 @@ const parseInline = (text) => {
   const parts = cleanText.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\$.*?\$)/g);
 
   return parts.map((part, index) => {
-    // Bold: Hapus 'text-slate-900' agar warnanya ngikut parent (Putih di chat, Hitam di materi)
+    // Bold: Hapus 'text-slate-900' agar warnanya ngikut parent
     if (part.startsWith('**') && part.endsWith('**'))
       return <strong key={index} className="font-black tracking-tight">{part.slice(2, -2)}</strong>;
 
-    // Italic: Tetap pakai style lama (background biru muda) karena aman & bagus
+    // Italic: Tetap pakai style lama
     if (part.startsWith('*') && part.endsWith('*'))
       return <em key={index} className="text-blue-600 font-semibold not-italic bg-blue-50 px-1 rounded">{part.slice(1, -1)}</em>;
 
-    // Code: Tetap pakai style lama (background slate) karena aman
+    // Code: Tetap pakai style lama
     if (part.startsWith('`') && part.endsWith('`'))
       return <code key={index} className="bg-slate-100 px-1.5 py-0.5 rounded-lg text-pink-600 font-mono text-[13px] font-bold border border-slate-200">{part.slice(1, -1)}</code>;
 
-    // Math: Tetap pakai style lama (background indigo) karena aman
+    // Math: Tetap pakai style lama
     if (part.startsWith('$') && part.endsWith('$'))
       return (
         <span key={index} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-serif italic mx-1 text-[13px] shadow-sm">
@@ -123,16 +123,25 @@ const parseInline = (text) => {
 const SimpleMarkdown = ({ text }) => {
   if (!text || typeof text !== 'string') return null;
 
-  // Pre-processing: Handle literal \n dari JSON AI
-  const processedText = text.replace(/\\n/g, '\n');
+  // Pre-processing
+  let processedText = text.replace(/\\n/g, '\n');
+
+  // --- [LOGIKA UNWRAPPER] ---
+  const trimmed = processedText.trim();
+  if ((trimmed.startsWith("```markdown") || trimmed.startsWith("```md")) && trimmed.endsWith("```")) {
+    const lines = trimmed.split('\n');
+    if (lines.length >= 2) {
+      processedText = lines.slice(1, -1).join('\n').trim();
+    }
+  }
+  // -------------------------
 
   const parts = processedText.split(/(```[\s\S]*?```)/g);
 
   return (
-    // HAPUS 'text-slate-700' di sini agar warna teks fleksibel
     <div className="space-y-3 text-[15px] leading-relaxed font-medium">
       {parts.map((part, i) => {
-        // Handle Code Block (Tetap sama)
+        // Handle Code Block
         if (part.startsWith('```')) {
           const content = part.replace(/^```\w*\n?|```$/g, '');
           return (
@@ -153,7 +162,6 @@ const SimpleMarkdown = ({ text }) => {
             const headers = tableBuffer[0].split('|').filter(c => c.trim()).map(c => c.trim());
             const rows = tableBuffer.slice(2).map(r => r.split('|').filter(c => c.trim()).map(c => c.trim()));
             elements.push(
-              // Tabel dikasih background putih transparan biar aman di mode gelap/terang
               <div key={`tbl-${i}-${elements.length}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200/60 shadow-sm bg-white/50">
                 <table className="w-full text-left text-sm border-collapse">
                   <thead className="bg-slate-50/80 text-slate-700 font-bold uppercase text-xs">
@@ -183,17 +191,40 @@ const SimpleMarkdown = ({ text }) => {
             flushTable();
             if (!line) continue;
 
-            // Header: Hapus warna spesifik (slate-800, dll) ganti ke default/current color
-            if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-black mt-5 mb-2 opacity-90">{parseInline(line.slice(4))}</h3>);
+            // [UPDATE] Horizontal Rule (---) yang lebih fleksibel
+            // Sekarang support '---', '***', atau '___' meskipun ada spasi di belakangnya
+            const isHorizontalRule = /^(?:---|___|\*\*\*)\s*$/.test(line);
+
+            if (isHorizontalRule) {
+              elements.push(<hr key={`${i}-${j}`} className="my-6 border-t-2 border-slate-200" />);
+            }
+
+            // Header
+            else if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-black mt-5 mb-2 opacity-90">{parseInline(line.slice(4))}</h3>);
             else if (line.startsWith('## ')) elements.push(<h2 key={`${i}-${j}`} className="text-xl font-black mt-6 mb-3 pb-2 border-b border-current opacity-80">{parseInline(line.slice(3))}</h2>);
             else if (line.startsWith('# ')) elements.push(<h1 key={`${i}-${j}`} className="text-2xl font-black mt-6 mb-4">{parseInline(line.slice(2))}</h1>);
-            // List: Gunakan bg-current (ikut warna teks) dengan opacity biar cocok di background apa saja
+
+            // [UPDATE] Blockquote (> Teks)
+            // Sekarang support '>' tanpa spasi juga (misal: >Text)
+            else if (line.startsWith('>')) {
+              // Hapus tanda '>' di awal dan spasi opsional setelahnya
+              const content = line.replace(/^>\s?/, '');
+              elements.push(
+                <blockquote key={`${i}-${j}`} className="border-l-4 border-blue-400 pl-4 py-2 my-4 bg-blue-50/50 rounded-r-lg italic text-slate-600">
+                  {parseInline(content)}
+                </blockquote>
+              );
+            }
+
+            // List
             else if (line.startsWith('- ') || line.startsWith('* ')) elements.push(
               <div key={`${i}-${j}`} className="flex gap-3 ml-1 mb-2 items-start">
                 <div className="min-w-[6px] h-[6px] rounded-full bg-current opacity-60 mt-2"></div>
                 <span className="leading-relaxed">{parseInline(line.slice(2))}</span>
               </div>
             );
+
+            // Default Text
             else elements.push(<div key={`${i}-${j}`} className="leading-relaxed mb-2">{parseInline(line)}</div>);
           }
         }
