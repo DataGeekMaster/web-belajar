@@ -259,27 +259,71 @@ const smartAIFetch = async (promptGenerator) => {
 
 // --- IMPLEMENTATION OF FEATURES USING SMART AI ---
 
-const generateLessonContent = async (topic, courseContext = "General") => {
-  const prompt = `Kamu adalah Tutor Asik "Nexus". Pelajaran: "${courseContext}". Topik: "${topic}".
-    Output JSON (WAJIB BAHASA INDONESIA):
-    {
-      "theory": "Penjelasan materi format Markdown < 200 kata. Bahasa Indonesia gaul.",
-      "quiz": [
-        { "question": "Tanya Indo", "options": ["A", "B", "C", "D"], "correctAnswer": 0, "explanation": "Jelaskan Indo" }
-      ]
-    }
-    Buat pas 5 soal. HANYA JSON MURNI TANPA BLOCK MARKDOWN.`;
+// --- [NEW] GENERATOR TERPISAH (MATERI & SOAL) ---
+
+// 1. Generate Teori Dulu
+const generateLessonTheory = async (title, courseTitle, description) => {
+  const prompt = `
+    Role: Tutor Coding & Sains yang Asik, Gaul, tapi sangat mendalam pengetahuannya.
+    Konteks: Kursus "${courseTitle}".
+    Topik: "${title}".
+    Deskripsi Singkat: "${description}".
+
+    Tugas:
+    Buat penjelasan materi LENGKAP, MENDALAM, dan TERSTRUKTUR tentang topik di atas.
+    - Gunakan Bahasa Indonesia yang santai/gaul tapi tetap edukatif.
+    - Berikan contoh nyata atau analogi yang mudah dimengerti.
+    - Jika ini tentang coding, berikan contoh kode snippet.
+    - Jika ini tentang sains/matematika, berikan rumus dan contoh perhitungannya.
+    - Format output WAJIB Markdown murni. JANGAN pakai JSON di sini.
+  `;
+
+  return await smartAIFetch(prompt);
+};
+
+// 2. Generate Kuis Berdasarkan Teori Tadi
+const generateLessonQuiz = async (theoryContent) => {
+  const prompt = `
+    Role: Pembuat Soal Ujian Kritis & Teliti.
+    
+    Tugas:
+    Buat 5 soal pilihan ganda BERDASARKAN materi berikut ini.
+    Pastikan jawabannya BENAR-BENAR ADA di dalam materi tersebut. Jangan tanya hal di luar konteks materi ini.
+
+    Materi Referensi:
+    """
+    ${theoryContent}
+    """
+
+    Instruksi Output:
+    - Buat pas 5 soal.
+    - Penjelasan (explanation) harus SUPER LENGKAP dan DETAIL. Jelaskan kenapa jawaban benar itu benar, dan kenapa opsi lain salah.
+    - Output HANYA JSON MURNI (Array of Objects). Tanpa markdown block code.
+    
+    Format JSON:
+    [
+      { 
+        "question": "Pertanyaan...", 
+        "options": ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"], 
+        "correctAnswer": 0, 
+        "explanation": "Penjelasan detail..." 
+      }
+    ]
+  `;
 
   const text = await smartAIFetch(prompt);
   if (!text) return null;
   try {
     const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanText);
-  } catch (e) { return null; }
+  } catch (e) {
+    console.error("Gagal parse JSON Quiz:", e);
+    return null;
+  }
 };
 
 const chatWithAI = async (context, query) => {
-  const prompt = `Konteks: "${context}". User: "${query}". Peran: Tutor Coding Gaul. Jawab dalam BAHASA INDONESIA yang asik.`;
+  const prompt = `Konteks: "${context}". User: "${query}". Peran: Tutor Coding Gaul namun sangat pintar dan bijaksana. Jawab dalam BAHASA INDONESIA yang asik.`;
   const res = await smartAIFetch(prompt);
   return res || "Sistem sibuk, coba lagi nanti ya Challenger!";
 };
@@ -1292,43 +1336,141 @@ const CodeLabModal = ({ isOpen, onClose, activeCourse }) => {
   );
 };
 
+// [UPDATED] CyberLessonModal - Sequential Generation (Theory -> Quiz)
 const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat }) => {
   const [stage, setStage] = useState('theory');
   const [content, setContent] = useState(null);
-  const [currentQIndex, setCurrentQIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState(null);
-  const [score, setScore] = useState(0);
-  const [feedback, setFeedback] = useState(null);
 
-  useEffect(() => { generateLessonContent(lesson.title, courseTitle).then(setContent); }, [lesson, courseTitle]);
+  // State Loading Spesifik
+  const [loadingStatus, setLoadingStatus] = useState("Menginisialisasi...");
+  const [isError, setIsError] = useState(false);
+
+  // State Navigasi & History
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [quizHistory, setQuizHistory] = useState({});
+  const [maxReached, setMaxReached] = useState(0);
+  const [tempSelectedOption, setTempSelectedOption] = useState(null);
+  const [score, setScore] = useState(0);
+
+  // --- LOGIKA LOAD BERTAHAP ---
+  const loadContent = async () => {
+    setIsError(false);
+    setContent(null);
+
+    try {
+      // 1. Generate Materi Dulu
+      setLoadingStatus("Sedang menyusun materi lengkap...");
+      console.log(`🧠 Generating Theory: ${lesson.title}`);
+
+      const theoryText = await generateLessonTheory(lesson.title, courseTitle, lesson.description);
+
+      if (!theoryText) throw new Error("Gagal generate materi.");
+
+      // 2. Generate Soal Berdasarkan Materi
+      setLoadingStatus("Sedang meracik soal dari materi...");
+      console.log(`🧠 Generating Quiz based on theory...`);
+
+      const quizData = await generateLessonQuiz(theoryText);
+
+      // Validasi Soal
+      const isQuizValid = quizData && Array.isArray(quizData) && quizData.length > 0 &&
+        quizData.every(q => q.options && q.options.length > 0);
+
+      if (!isQuizValid) throw new Error("Gagal generate soal yang valid.");
+
+      // 3. Set Content Gabungan
+      setContent({
+        theory: theoryText,
+        quiz: quizData
+      });
+
+    } catch (error) {
+      console.error("❌ Error di CyberLessonModal:", error);
+      setIsError(true);
+    }
+  };
+
+  useEffect(() => {
+    loadContent();
+  }, [lesson, courseTitle]);
+
+  useEffect(() => {
+    setTempSelectedOption(null);
+  }, [currentQIndex]);
 
   const handleCheck = () => {
-    if (selectedOption === null) return;
+    if (tempSelectedOption === null) return;
     const currentQ = content.quiz[currentQIndex];
-    const isCorrect = selectedOption === currentQ.correctAnswer;
-    setFeedback({ correct: isCorrect, text: currentQ.explanation });
+    const isCorrect = tempSelectedOption === currentQ.correctAnswer;
+    const feedbackObj = { correct: isCorrect, text: currentQ.explanation };
+    setQuizHistory(prev => ({ ...prev, [currentQIndex]: { selectedOption: tempSelectedOption, feedback: feedbackObj } }));
     if (isCorrect) setScore(s => s + 1);
+    if (currentQIndex === maxReached) { setMaxReached(m => m + 1); }
   };
 
   const handleNext = () => {
-    if (currentQIndex < (content.quiz?.length || 0) - 1) { setCurrentQIndex(p => p + 1); setSelectedOption(null); setFeedback(null); }
-    else { setStage('summary'); }
+    if (currentQIndex < (content.quiz?.length || 0) - 1) { setCurrentQIndex(p => p + 1); } else { setStage('summary'); }
   };
 
-  if (!content) return <div className="fixed inset-0 z-50 bg-white flex items-center justify-center"><Loading /></div>;
+  const jumpToQuestion = (index) => {
+    if (index <= maxReached && index < content.quiz.length) { setCurrentQIndex(index); }
+  };
+
+  // --- RENDERING ERROR ---
+  if (isError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in zoom-in-95">
+        <div className="bg-white rounded-3xl p-8 max-w-md text-center border-4 border-red-100 shadow-2xl">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle size={32} className="text-red-500" />
+          </div>
+          <h3 className="text-xl font-black text-slate-800 mb-2">Gagal Memproses</h3>
+          <p className="text-slate-500 text-sm mb-6">
+            AI mengalami kesulitan menyusun materi/soal yang sempurna.
+          </p>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-3 bg-slate-100 font-bold text-slate-500 rounded-xl hover:bg-slate-200 transition-colors">Tutup</button>
+            <button onClick={loadContent} className="flex-1 py-3 bg-red-500 font-bold text-white rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95">Coba Lagi ↻</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RENDERING LOADING (DENGAN STATUS TEXT) ---
+  if (!content) return (
+    <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center">
+      <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+      <span className="font-bold tracking-widest text-sm text-blue-500 animate-pulse uppercase">{loadingStatus}</span>
+    </div>
+  );
+
   const passed = score >= 3;
+  const currentHistory = quizHistory[currentQIndex];
+  const isAnswered = !!currentHistory;
+  const currentQuestion = content.quiz[currentQIndex];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in zoom-in-95 duration-200">
       <div className="w-full max-w-3xl h-[90vh] bg-white rounded-[40px] shadow-2xl flex flex-col overflow-hidden border-8 border-white">
+
+        {/* HEADER MODAL */}
         <div className="p-6 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="w-full">
             <div className="flex justify-between items-center mb-2">
               <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="text-slate-400" /></button>
               <div className="flex gap-1">
-                {Array.from({ length: content.quiz?.length || 5 }).map((_, i) => (
-                  <div key={i} className={`h-2 rounded-full transition-all ${i < currentQIndex ? 'w-4 bg-green-400' : i === currentQIndex ? 'w-8 bg-blue-500' : 'w-4 bg-slate-200'}`}></div>
-                ))}
+                {content.quiz.map((_, i) => {
+                  let dotClass = "w-4 bg-slate-200 cursor-not-allowed";
+                  if (i === currentQIndex) { dotClass = "w-8 bg-blue-500"; }
+                  else if (i < currentQIndex || i <= maxReached) {
+                    const hist = quizHistory[i];
+                    if (hist?.feedback?.correct) dotClass = "w-4 bg-green-400 hover:bg-green-500 cursor-pointer";
+                    else if (hist) dotClass = "w-4 bg-red-400 hover:bg-red-500 cursor-pointer";
+                    else dotClass = "w-4 bg-slate-300 hover:bg-slate-400 cursor-pointer";
+                  }
+                  return <button key={i} onClick={() => jumpToQuestion(i)} disabled={i > maxReached} className={`h-2 rounded-full transition-all ${dotClass}`} title={`Soal ${i + 1}`} />;
+                })}
               </div>
               <div className="w-8"></div>
             </div>
@@ -1336,40 +1478,63 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 relative">
+          {/* --- STAGE 1: TEORI --- */}
           {stage === 'theory' && (
             <div className="max-w-xl mx-auto">
               <h2 className="text-3xl font-black text-slate-800 mb-6">{lesson.title}</h2>
               <div className="prose prose-slate prose-lg mb-8"><SimpleMarkdown text={content.theory} /></div>
               <div className="sticky bottom-0 bg-white/80 backdrop-blur p-4 border-t border-slate-100">
-                <button onClick={() => setStage('quiz')} className="w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d shadow-lg shadow-blue-200">MULAI KUIS</button>
+                <button onClick={() => setStage('quiz')} className="w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d shadow-lg shadow-blue-200">
+                  {maxReached > 0 ? "LANJUTKAN KUIS 🚀" : "MULAI KUIS"}
+                </button>
               </div>
             </div>
           )}
 
-          {stage === 'quiz' && content.quiz && (
+          {/* --- STAGE 2: KUIS --- */}
+          {stage === 'quiz' && currentQuestion && (
             <div className="max-w-xl mx-auto pt-4">
-              <h3 className="text-xl font-bold text-slate-700 mb-8">{content.quiz[currentQIndex].question}</h3>
+              <div className="mb-6 flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pertanyaan {currentQIndex + 1} dari {content.quiz.length}</span>
+                <button onClick={() => setStage('theory')} className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"><BookOpen size={14} /> LIHAT MATERI</button>
+              </div>
+
+              <h3 className="text-xl font-bold text-slate-700 mb-8 animate-in fade-in slide-in-from-right-4 duration-300">
+                {currentQuestion.question}
+              </h3>
+
               <div className="space-y-4">
-                {content.quiz[currentQIndex].options.map((opt, idx) => {
+                {currentQuestion.options?.map((opt, idx) => {
                   let stateStyle = "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300";
-                  if (feedback) {
-                    if (idx === content.quiz[currentQIndex].correctAnswer) stateStyle = "bg-green-100 border-green-400 text-green-700";
-                    else if (idx === selectedOption) stateStyle = "bg-red-100 border-red-400 text-red-700";
-                    else stateStyle = "bg-slate-50 border-slate-100 text-slate-300";
-                  } else if (idx === selectedOption) { stateStyle = "bg-blue-100 border-blue-400 text-blue-700 ring-2 ring-blue-200"; }
-                  return (<button key={idx} onClick={() => !feedback && setSelectedOption(idx)} disabled={!!feedback} className={`w-full p-5 rounded-2xl border-2 border-b-4 text-left font-bold transition-all ${stateStyle} ${!feedback && 'active:border-b-2 active:translate-y-1'}`}>{opt}</button>);
+                  const displayFeedback = isAnswered ? currentHistory.feedback : null;
+                  const displaySelected = isAnswered ? currentHistory.selectedOption : tempSelectedOption;
+
+                  if (displayFeedback) {
+                    if (idx === currentQuestion.correctAnswer) stateStyle = "bg-green-100 border-green-400 text-green-700 opacity-100";
+                    else if (idx === displaySelected) stateStyle = "bg-red-100 border-red-400 text-red-700 opacity-60";
+                    else stateStyle = "bg-slate-50 border-slate-100 text-slate-300 opacity-50";
+                  } else if (idx === displaySelected) { stateStyle = "bg-blue-100 border-blue-400 text-blue-700 ring-2 ring-blue-200"; }
+
+                  return (
+                    <button key={idx} onClick={() => !isAnswered && setTempSelectedOption(idx)} disabled={isAnswered} className={`w-full p-5 rounded-2xl border-2 border-b-4 text-left font-bold transition-all ${stateStyle} ${!isAnswered && 'active:border-b-2 active:translate-y-1'}`}>
+                      {opt}
+                    </button>
+                  );
                 })}
               </div>
+
               <div className="mt-8">
-                {!feedback ? (
-                  <button onClick={handleCheck} disabled={selectedOption === null} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1 transition-all btn-3d disabled:opacity-50 disabled:cursor-not-allowed">CEK JAWABAN</button>
+                {!isAnswered ? (
+                  <button onClick={handleCheck} disabled={tempSelectedOption === null} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1 transition-all btn-3d disabled:opacity-50 disabled:cursor-not-allowed">KUNCI JAWABAN 🔒</button>
                 ) : (
                   <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
-                    <div className={`p-4 rounded-2xl mb-4 ${feedback.correct ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      <p className="font-bold mb-1">{feedback.correct ? "Kamu Benar! 🎉" : "Ups, kurang tepat 😅"}</p>
-                      <div className="text-sm"><SimpleMarkdown text={feedback.text} /></div>
+                    <div className={`p-4 rounded-2xl mb-4 ${currentHistory.feedback.correct ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      <p className="font-bold mb-1">{currentHistory.feedback.correct ? "Kamu Benar! 🎉" : "Ups, kurang tepat 😅"}</p>
+                      <div className="text-sm"><SimpleMarkdown text={currentHistory.feedback.text} /></div>
                     </div>
-                    <button onClick={handleNext} className={`w-full font-black py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all btn-3d text-white ${feedback.correct ? 'bg-blue-500 border-blue-700' : 'bg-red-500 border-red-700'}`}>LANJUT</button>
+                    <button onClick={handleNext} className={`w-full font-black py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all btn-3d text-white ${currentHistory.feedback.correct ? 'bg-blue-500 border-blue-700' : 'bg-slate-500 border-slate-700 hover:bg-slate-400'}`}>
+                      {currentQIndex < content.quiz.length - 1 ? "LANJUT SOAL BERIKUTNYA 👉" : "LIHAT HASIL AKHIR 🏆"}
+                    </button>
                   </div>
                 )}
               </div>
@@ -1379,28 +1544,16 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
           {stage === 'summary' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               {passed ? (
-                <div className="mb-6 flex flex-col items-center animate-bounce">
-                  <Trophy size={80} className="text-yellow-400 drop-shadow-lg" />
-                  <h2 className="text-3xl font-black text-yellow-500 mt-2">MISI SELESAI!</h2>
-                </div>
+                <div className="mb-6 flex flex-col items-center animate-bounce"><Trophy size={80} className="text-yellow-400 drop-shadow-lg" /><h2 className="text-3xl font-black text-yellow-500 mt-2">MISI SELESAI!</h2></div>
               ) : (
-                <div className="mb-6 flex flex-col items-center">
-                  <AlertTriangle size={80} className="text-red-500 drop-shadow-lg" />
-                  <h2 className="text-3xl font-black text-red-500 mt-2">MISI GAGAL</h2>
-                </div>
+                <div className="mb-6 flex flex-col items-center"><AlertTriangle size={80} className="text-red-500 drop-shadow-lg" /><h2 className="text-3xl font-black text-red-500 mt-2">MISI GAGAL</h2></div>
               )}
-
               <p className="text-slate-500 mb-8 font-bold text-lg">Skor Kamu: {score} / {content.quiz.length}</p>
-
               <div className="flex gap-4 w-full max-w-sm">
                 {passed ? (
-                  <button onClick={() => { onComplete(); onClose(); }} className="flex-1 bg-blue-500 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d">
-                    KEMBALI KE MAP
-                  </button>
+                  <button onClick={() => { onComplete(); onClose(); }} className="flex-1 bg-blue-500 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d">KEMBALI KE MAP</button>
                 ) : (
-                  <button onClick={() => { setStage('quiz'); setCurrentQIndex(0); setScore(0); setSelectedOption(null); setFeedback(null); }} className="flex-1 bg-slate-200 text-slate-600 font-black py-4 rounded-2xl border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all btn-3d">
-                    ULANGI
-                  </button>
+                  <button onClick={() => { setStage('quiz'); setCurrentQIndex(0); setScore(0); setQuizHistory({}); setMaxReached(0); setTempSelectedOption(null); }} className="flex-1 bg-slate-200 text-slate-600 font-black py-4 rounded-2xl border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all btn-3d">ULANGI</button>
                 )}
               </div>
             </div>
