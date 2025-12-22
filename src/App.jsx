@@ -2,17 +2,18 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInAnonymously, signInWithCustomToken, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import {
   collection, doc,
-  getDoc, deleteDoc,
+  getDocs, getDoc,
   getFirestore,
   increment,
   onSnapshot,
   serverTimestamp,
   setDoc,
   updateDoc,
-  collectionGroup, // <--- TAMBAH INI (PENTING BUAT LEADERBOARD)
-  query,           // <--- TAMBAH INI
-  orderBy,         // <--- TAMBAH INI
-  limit
+  collectionGroup,
+  query,
+  orderBy,
+  limit,
+  writeBatch
 } from 'firebase/firestore';
 import {
   AlertTriangle,
@@ -334,7 +335,7 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
   else if (projectWinRate > 0) wrColor = 'text-red-500';
 
   return (
-    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-screen bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40">
+    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-full bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40">
       <div className="hidden md:flex items-center gap-3 px-4 py-6 mb-4">
         {/* Klik Avatar buat ganti nama */}
         <button onClick={onRename} className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 hover:scale-105 transition-transform group relative">
@@ -1571,101 +1572,120 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. useEffect KEDUA: Khusus mengambil Data Database (Hanya jalan kalau user sudah login)
+  // 2. useEffect KEDUA: Smart Data Fetching & Auto-Restore
   useEffect(() => {
-    if (!user) return; // Kalau gak ada user, gak usah jalan
+    if (!user) {
+      console.log("⛔ [DB] User belum login. Listener tidak dijalankan.");
+      return;
+    }
 
-    // A. Ambil Stats
+    console.log("🔄 [DB] Memulai listener database untuk User ID:", user.uid);
+    let isMounted = true; // Flag untuk mencegah memory leak
+
+    // A. Ambil Stats (CORE LOGIC)
     const statsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main');
-    const unsubStats = onSnapshot(statsRef, (s) => {
+
+    const unsubStats = onSnapshot(statsRef, async (s) => {
+      if (!isMounted) return;
+
+      console.log(`📥 [DB] Snapshot Stats diterima. Exists: ${s.exists()} | Source: ${s.metadata.hasPendingWrites ? 'Local' : 'Server'}`);
+
       if (s.exists()) {
-        setUserStats(s.data());
+        // [KASUS 1] Data SUDAH ADA di Firestore 
+        // (Bisa data normal user lama, atau hasil restore yang baru saja sukses ditulis)
+        const data = s.data();
+        console.log("✅ [DB] Data valid ditemukan:", data);
+
+        setUserStats(data);
+
+        // KUNCI: Data valid sudah masuk, baru kita izinkan UI tampil
+        // Ini akan menghilangkan Loading screen dan (jika ada nama) tidak akan memunculkan Modal Setup
+        setIsDataLoaded(true);
       } else {
-        // Init stats jika user baru
-        setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
+        // [KASUS 2] Data KOSONG di Firestore
+        console.log("⚠️ [DB] Dokumen stats kosong. Mengecek status user...");
+
+        // Cek LocalStorage: Apakah ada "harta karun" (backup) yang tertinggal?
+        const savedBackup = localStorage.getItem('guest_backup');
+
+        if (user.isAnonymous && savedBackup) {
+          // --- LOGIKA RESTORE ---
+          console.log("♻️ [RESTORE] Terdeteksi User Tamu dengan Backup Lokal.");
+
+          // PENTING: JANGAN set setIsDataLoaded(true) di sini!
+          // Biarkan UI tetap dalam status "Loading..." agar Modal Setup Profile TIDAK MUNCUL.
+
+          try {
+            const backupData = JSON.parse(savedBackup);
+            console.log("📦 [RESTORE] Isi Backup:", backupData);
+
+            // Tulis data backup ke Firestore UID yang baru
+            console.log("⏳ [RESTORE] Menulis data ke Firestore...");
+
+            await setDoc(statsRef, {
+              ...backupData,
+              restoredAt: serverTimestamp() // Penanda bahwa ini hasil restore
+            }, { merge: true });
+
+            console.log("💾 [RESTORE] Penulisan BERHASIL. Menunggu snapshot berikutnya...");
+
+            // KITA STOP DI SINI. 
+            // Jangan lakukan apa-apa lagi.
+            // Tindakan 'setDoc' di atas akan memicu 'onSnapshot' ini berjalan LAGI.
+            // Di putaran berikutnya, dia akan masuk ke [KASUS 1] karena s.exists() sudah true.
+            return;
+
+          } catch (e) {
+            console.error("❌ [RESTORE] Gagal memulihkan backup:", e);
+            // Jika restore error fatal, terpaksa anggap user baru biar tidak stuck
+            setUserStats({ xp: 0, lessonsCompleted: 0 });
+            setIsDataLoaded(true);
+          }
+        } else {
+          // [KASUS 3] Benar-benar User Baru (Tidak ada backup / Bukan Anonim)
+          console.log("✨ [NEW] User baru murni (atau User Google baru). Menginisialisasi data awal...");
+
+          // Init data default 0 XP
+          setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
+
+          setUserStats({ xp: 0, lessonsCompleted: 0 });
+
+          // Buka gerbang UI -> Karena stats kosong (belum ada nama), Modal Setup Profile AKAN MUNCUL (Sesuai harapan)
+          setIsDataLoaded(true);
+        }
       }
-
-      // --- TAMBAHAN PENTING ---
-      // Beri tahu aplikasi bahwa data sudah selesai dimuat agar modal nama tidak muncul sembarangan
-      setIsDataLoaded(true);
-      // ------------------------
-
     }, (error) => {
-      console.error("Error mengambil Stats:", error);
-      setIsDataLoaded(true); // Tetap set true biar gak loading selamanya kalau error
+      console.error("🔥 [DB ERROR] Gagal mengambil Stats:", error);
+      setIsDataLoaded(true); // Fallback agar aplikasi tidak macet di loading screen selamanya
     });
 
-    // B. Ambil Progress
+    // B. Ambil Progress (Logika Standar)
     const progRef = collection(db, 'artifacts', appId, 'users', user.uid, 'progress');
     const unsubProg = onSnapshot(progRef, (s) => {
+      console.log(`📚 [DB] Progress update. Jumlah course: ${s.size}`);
       const p = {};
       s.forEach(d => p[d.id] = d.data());
       setUserProgress(p);
-    }, (error) => {
-      console.error("Error mengambil Progress:", error);
     });
 
-    // Cleanup listeners saat user logout/ganti
     return () => {
+      console.log("🔌 [DB] Membersihkan listener...");
+      isMounted = false;
       unsubStats();
       unsubProg();
     };
   }, [user]);
-  // --- 2. LOGIC DATABASE & AUTO-RESTORE (ANTI-RESET) ---
 
-  // A. Logic Simpan Backup Tamu ke HP setiap kali XP/Stats berubah
+  // 3. LOGIC BACKUP: Simpan ke LocalStorage (Safe Guard)
   useEffect(() => {
-    // Hanya backup jika user adalah Tamu dan punya progress (XP > 0)
-    if (user && user.isAnonymous && userStats.xp > 0) {
+    // Hanya backup jika:
+    // 1. User Anonim
+    // 2. Data SUDAH dimuat dari DB (isDataLoaded) -> Mencegah overwrite backup dengan data kosong saat inisialisasi
+    // 3. Punya progress (XP > 0)
+    if (user && user.isAnonymous && isDataLoaded && userStats.xp > 0) {
       localStorage.setItem('guest_backup', JSON.stringify(userStats));
     }
-  }, [user, userStats]);
-
-  // B. Logic Ambil Data Database & Restore Backup jika perlu
-  useEffect(() => {
-    if (!user) return;
-
-    // Ambil Stats
-    const statsRef = doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main');
-    const unsubStats = onSnapshot(statsRef, (s) => {
-      if (s.exists()) {
-        // KASUS 1: Data ada di database (User Lama / Google) -> Pakai data itu
-        setUserStats(s.data());
-      } else {
-        // KASUS 2: Data KOSONG di Database (Tamu Baru / Reset)
-        // Cek apakah ada backup data tamu di HP?
-        const savedBackup = localStorage.getItem('guest_backup');
-
-        if (user.isAnonymous && savedBackup) {
-          // RESTORE DATA LAMA! (Solusi agar progress kembali)
-          try {
-            const backupData = JSON.parse(savedBackup);
-            // Tulis data backup ke ID Tamu yang baru ini
-            setDoc(statsRef, backupData, { merge: true });
-            // Update tampilan langsung biar cepat
-            setUserStats(backupData);
-          } catch (e) {
-            console.error("Gagal restore backup", e);
-            setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
-          }
-        } else {
-          // Benar-benar user baru (tidak ada backup)
-          setDoc(statsRef, { xp: 0, lessonsCompleted: 0 }, { merge: true });
-        }
-      }
-      // PENTING: Kunci agar modal nama tidak muncul sembarangan
-      setIsDataLoaded(true);
-    });
-
-    // Ambil Progress (Tetap sama)
-    const progRef = collection(db, 'artifacts', appId, 'users', user.uid, 'progress');
-    const unsubProg = onSnapshot(progRef, (s) => {
-      const p = {}; s.forEach(d => p[d.id] = d.data());
-      setUserProgress(p);
-    });
-
-    return () => { unsubStats(); unsubProg(); };
-  }, [user]);
+  }, [user, userStats, isDataLoaded]);
 
   const handleLessonComplete = async () => {
     if (!user || !activeLesson) return;
@@ -1678,47 +1698,103 @@ export default function App() {
     await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), { xp: increment(xp) });
   };
 
-  // Helper: Eksekusi Login Google Sebenarnya
+  // Helper: Eksekusi Login Google Sebenarnya + AUTO CLEANUP
   const performGoogleSignIn = async (shouldMergeAnonData) => {
     const provider = new GoogleAuthProvider();
-    // Simpan stats tamu saat ini ke memori sementara
+
+    // 1. Simpan data Tamu (Guest) saat ini
     const currentGuestStats = { ...userStats };
     const currentGuestID = user ? user.uid : null;
+    const isGuest = user ? user.isAnonymous : false;
+
+    // 2. Hitung WR
+    const guestWR = currentGuestStats.totalProjectsFinished > 0
+      ? Math.round((currentGuestStats.totalProjectScore || 0) / currentGuestStats.totalProjectsFinished)
+      : 0;
+
+    // 3. CEK KONDISI SAMPAH (0 XP & 0 WR)
+    const isTrashAccount = currentGuestStats.xp === 0 && guestWR === 0;
 
     try {
-      // Login Google
       const result = await signInWithPopup(auth, provider);
       const googleUser = result.user;
 
-      // Cek Konflik Data di Akun Google
+      // ============================================================
+      // 🔥 SKENARIO 1: AKUN TAMU SAMPAH (0 XP) -> LANGSUNG HAPUS
+      // ============================================================
+      if (isGuest && isTrashAccount && currentGuestID) {
+        console.warn(`🧹 [CLEANUP] Membersihkan TOTAL akun tamu sampah ${currentGuestID}...`);
+        const batch = writeBatch(db);
+
+        batch.delete(doc(db, 'artifacts', appId, 'users', currentGuestID, 'stats', 'main'));
+
+        // Cek sisa progress/project kalau ada
+        const progQ = await getDocs(collection(db, 'artifacts', appId, 'users', currentGuestID, 'progress'));
+        progQ.forEach(d => batch.delete(d.ref));
+
+        const projQ = await getDocs(collection(db, 'artifacts', appId, 'users', currentGuestID, 'projects'));
+        projQ.forEach(d => batch.delete(d.ref));
+
+        await batch.commit();
+        localStorage.removeItem('guest_backup');
+
+        console.log("✨ [CLEANUP] Database akun tamu bersih total!");
+        setShowSyncModal(false);
+        return;
+      }
+
+      // ... (Cek Konflik Data Google TETAP SAMA) ...
       const googleStatsRef = doc(db, 'artifacts', appId, 'users', googleUser.uid, 'stats', 'main');
       const googleStatsSnap = await getDoc(googleStatsRef);
 
-      // JIKA KONFLIK (Google sudah ada isinya > 0 XP)
       if (shouldMergeAnonData && googleStatsSnap.exists() && googleStatsSnap.data().xp > 0) {
         setConflictData({ local: currentGuestStats, remote: googleStatsSnap.data() });
         setShowConflictModal(true);
         setShowSyncModal(false);
-        return; // STOP! Jangan hapus backup, jangan merge.
+        return;
       }
 
-      // JIKA MERGE LANCAR (Google kosong atau User minta merge)
+      // ============================================================
+      // 🔥 SKENARIO 2: MERGE DATA (GUEST XP > 0) -> PINDAH & HAPUS
+      // ============================================================
       if (shouldMergeAnonData) {
+        console.log(`🚀 [MERGE] Memindahkan data ${currentGuestStats.xp} XP ke akun Google...`);
         const finalName = googleUser.displayName || currentGuestStats.displayName || "Challenger";
 
+        // 1. TULIS DATA KE AKUN GOOGLE
         await setDoc(googleStatsRef, {
           ...currentGuestStats,
           displayName: finalName,
-          mergedAt: serverTimestamp()
+          mergedAt: serverTimestamp(),
+          mergedFrom: currentGuestID // Jejak audit
         }, { merge: true });
 
-        // Hapus data ID tamu lama di database (opsional, biar bersih)
+        // 2. PINDAHKAN PROGRESS BELAJAR (Opsional tapi bagus)
+        // Kalau mau perfect, kita baca progress tamu dan tulis ke Google juga.
+        // Tapi untuk sekarang, kita fokus ke Stats dulu sesuai request.
+
+        // 3. 🔥 DEEP CLEAN AKUN TAMU LAMA (4cB...) 🔥
+        // Agar ID lama tidak jadi sampah, kita hapus total sekarang.
         if (currentGuestID) {
-          await deleteDoc(doc(db, 'artifacts', appId, 'users', currentGuestID, 'stats', 'main'));
+          console.log(`🧹 [MERGE-CLEANUP] Menghapus jejak akun tamu lama ${currentGuestID}...`);
+          const batch = writeBatch(db);
+
+          // Hapus Stats
+          batch.delete(doc(db, 'artifacts', appId, 'users', currentGuestID, 'stats', 'main'));
+
+          // Hapus Progress
+          const progressSnaps = await getDocs(collection(db, 'artifacts', appId, 'users', currentGuestID, 'progress'));
+          progressSnaps.forEach(d => batch.delete(d.ref));
+
+          // Hapus Projects
+          const projectsSnaps = await getDocs(collection(db, 'artifacts', appId, 'users', currentGuestID, 'projects'));
+          projectsSnaps.forEach(d => batch.delete(d.ref));
+
+          await batch.commit();
         }
 
-        // PENTING: Hapus backup di HP karena data sudah aman pindah ke Google
         localStorage.removeItem('guest_backup');
+        console.log("✅ [MERGE] Sukses! Data pindah ke Google, Akun Tamu dimusnahkan.");
       }
 
       setShowSyncModal(false);
@@ -1812,7 +1888,7 @@ export default function App() {
   // 2. Dashboard Aplikasi
   return (
     <>
-      <div className="flex flex-col md:flex-row min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-pink-200 selection:text-pink-900">
+      <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-slate-50 text-slate-800 font-sans selection:bg-pink-200 selection:text-pink-900">
 
         <Sidebar
           userStats={userStats}
@@ -1842,8 +1918,32 @@ export default function App() {
                 </div>
               </button>
             </div>
-            <div className="flex items-center gap-2 font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <Zap className="text-yellow-500 fill-yellow-500" size={16} /> {userStats.xp}
+
+            {/* BAGIAN KANAN: XP & ACTION BUTTONS */}
+            <div className="flex items-center gap-2">
+              {/* 1. XP Bubble */}
+              <div className="flex items-center gap-1 font-black text-slate-700 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
+                <Zap className="text-yellow-500 fill-yellow-500" size={14} /> {userStats.xp}
+              </div>
+
+              {/* 2. LOGIKA TOMBOL DINAMIS (Sign In vs Logout) */}
+              {user.isAnonymous ? (
+                // JIKA TAMU: Tampilkan Tombol SYNC (Sign In)
+                <button
+                  onClick={handleGoogleLogin}
+                  className="flex items-center gap-1 bg-blue-600 text-white px-3 py-1.5 rounded-xl text-xs font-black border-b-2 border-blue-800 active:border-b-0 active:translate-y-1 transition-all shadow-lg shadow-blue-200 animate-pulse"
+                >
+                  ☁️ Login
+                </button>
+              ) : (
+                // JIKA USER GOOGLE: Tampilkan Tombol LOGOUT
+                <button
+                  onClick={handleLogout}
+                  className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-500 rounded-xl border border-red-100 hover:bg-red-100 transition-colors"
+                >
+                  <LogOut size={18} />
+                </button>
+              )}
             </div>
           </div>
 

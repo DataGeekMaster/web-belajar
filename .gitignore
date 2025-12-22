@@ -11,7 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
-# tambahkan folder .clean data ke .gitignore
+
+#di src/old_app tidak perlu diikutkan
+src/old_app
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
