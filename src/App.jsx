@@ -335,8 +335,8 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
   else if (projectWinRate > 0) wrColor = 'text-red-500';
 
   return (
-    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-full bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40">
-      <div className="hidden md:flex items-center gap-3 px-4 py-6 mb-4">
+    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-full bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40 md:overflow-y-auto hide-scrollbar">
+      <div className="hidden md:flex items-center gap-3 px-4 py-4 mb-4">
         {/* Klik Avatar buat ganti nama */}
         <button onClick={onRename} className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 hover:scale-105 transition-transform group relative">
           <Zap fill="currentColor" />

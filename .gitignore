@@ -13,7 +13,7 @@ dist-ssr
 *.local
 
 #di src/old_app tidak perlu diikutkan
-src/old_app
+src/old_app.jsx
 
 # Editor directories and files
 .vscode/*
