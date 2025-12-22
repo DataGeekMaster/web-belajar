@@ -1889,5 +1889,222 @@ export const COURSES_DATA = [
                 ]
             }
         ]
+    },
+    {
+        id: "ipas_kelas4",
+        title: "IPAS Kelas 4",
+        description: "Pelajari konsep dasar IPA dan Matematika yang menyenangkan untuk siswa kelas 4 SD.",
+        color: "purple",
+        icon: <Terminal size={24} />,
+        codeConfig: {
+            language: "",
+            defaultCode: "",
+            placeholder: ""
+        },
+        modules: [
+            {
+                id: "mod_ipas4_bab1",
+                title: "Bab 1: Energi & Perubahannya",
+                lessons: [
+                    {
+                        id: "les_ipas4_b1_1",
+                        title: "Apa Itu Energi?",
+                        description: "Kenalan dulu sama 'bensin'-nya kehidupan. Emang energi bisa dilihat? Atau cuma bisa dirasa?"
+                    },
+                    {
+                        id: "les_ipas4_b1_2",
+                        title: "Sulap Energi (Transformasi)",
+                        "description": "Energi gak bisa musnah, tapi bisa berubah wujud! Kayak dari listrik jadi gerak di kipas angin."
+                    },
+                    {
+                        id: "les_ipas4_b1_3",
+                        title: "Energi Potensial vs Kinetik",
+                        description: "Bedanya energi yang 'disimpan' (potensial) sama energi yang lagi 'beraksi' (kinetik/gerak)."
+                    },
+                    {
+                        id: "les_ipas4_b1_4",
+                        title: "Dapur Tumbuhan: Fotosintesis",
+                        description: "Gimana cara tumbuhan masak makanan sendiri pakai sinar matahari? Spoiler: Ada klorofilnya!"
+                    },
+                    {
+                        id: "les_ipas4_b1_5",
+                        title: "Energi di Sekitarmu",
+                        description: "Cek barang-barang di rumah, energi apa aja yang berubah di sana? TV, Rice Cooker, dll."
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab2",
+                title: "Bab 2: Gaya & Gerak",
+                lessons: [
+                    {
+                        id: "les_ipas4_b2_1",
+                        title: "Gaya: Dorong atau Tarik?",
+                        description: "Konsep dasar gaya. Bukan gaya foto ya, tapi interaksi benda wkwkwk."
+                    },
+                    {
+                        id: "les_ipas4_b2_2",
+                        title: "Gaya Otot & Gaya Gesek",
+                        description: "Kenapa lantai licin bikin kepleset? Itu karena gaya geseknya minim, kawan!"
+                    },
+                    {
+                        id: "les_ipas4_b2_3",
+                        title: "Benda Diam Jadi Gerak",
+                        description: "Gimana gaya bisa mengubah benda yang mager jadi lari kencang."
+                    },
+                    {
+                        id: "les_ipas4_b2_4",
+                        title: "Mengubah Bentuk Benda",
+                        description: "Main plastisin atau remuk kaleng, bukti kalau gaya bisa ubah bentuk."
+                    },
+                    {
+                        id: "les_ipas4_b2_5",
+                        title: "Magnet: Si Penempel Ajaib",
+                        description: "Kenalan sama Kutub Utara dan Selatan magnet. Kenapa mereka bisa tolak-menolak?"
+                    },
+                    {
+                        id: "les_ipas4_b2_6",
+                        title: "Benda Magnetis & Non-Magnetis",
+                        description: "Gak semua logam mau ditempel magnet lho. Siapa aja yang jual mahal?"
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab3",
+                title: "Bab 3: Daerah Tempat Tinggalku",
+                lessons: [
+                    {
+                        id: "les_ipas4_b3_1",
+                        title: "Peta: Petunjuk Jalan Kuno",
+                        description: "Cara baca peta biar gak nyasar kayak Dora. Belajar arah mata angin dan skala."
+                    },
+                    {
+                        id: "les_ipas4_b3_2",
+                        title: "Sejarah Daerahku",
+                        description: "Setiap daerah punya cerita asal-usul. Gimana cara taunya? Tanya sesepuh atau lihat peninggalan."
+                    },
+                    {
+                        id: "les_ipas4_b3_3",
+                        title: "Bentang Alam: Gunung & Laut",
+                        description: "Bedanya dataran tinggi, dataran rendah, dan pesisir pantai. Kamu tinggal di mana?"
+                    },
+                    {
+                        id: "les_ipas4_b3_4",
+                        title: "Kekayaan Alam Sekitar",
+                        description: "Potensi alam apa yang ada di daerahmu? Tambang, pertanian, atau wisata?"
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab4",
+                title: "Bab 4: Perubahan Iklim",
+                lessons: [
+                    {
+                        id: "les_ipas4_b4_1",
+                        title: "Cuaca vs Iklim",
+                        description: "Hari ini hujan, besok panas. Itu cuaca. Kalau Iklim itu jangka panjangnya."
+                    },
+                    {
+                        id: "les_ipas4_b4_2",
+                        title: "Efek Rumah Kaca",
+                        description: "Bumi makin panas kayak di oven. Kenapa bisa gitu? Apa selimut buminya ketebalan?"
+                    },
+                    {
+                        id: "les_ipas4_b4_3",
+                        title: "Si Jahat Gas Karbon",
+                        description: "Asap kendaraan dan pabrik bikin bumi demam. Yuk cari tau sumbernya."
+                    },
+                    {
+                        id: "les_ipas4_b4_4",
+                        title: "Aksi Kecil Selamatkan Bumi",
+                        description: "Hal simpel yang bisa kamu lakuin buat dinginin bumi lagi."
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab5",
+                title: "Bab 5: Kekhasan Daerahku",
+                lessons: [
+                    {
+                        id: "les_ipas4_b5_1",
+                        title: "Harta Karun Hayati",
+                        description: "Hewan dan tumbuhan unik yang cuma ada di daerah tertentu (Endemik)."
+                    },
+                    {
+                        id: "les_ipas4_b5_2",
+                        title: "Sumber Daya Unggulan",
+                        description: "Daerahmu terkenal penghasil apa? Kopi? Batik? Atau Ukiran?"
+                    },
+                    {
+                        id: "les_ipas4_b5_3",
+                        title: "Produk Daerahku Mendunia",
+                        description: "Gimana produk lokal bisa sampai dijual ke luar negeri."
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab6",
+                title: "Bab 6: Peranku di Sekolah & Masyarakat",
+                lessons: [
+                    {
+                        id: "les_ipas4_b6_1",
+                        title: "Hak vs Kewajiban",
+                        description: "Jangan nuntut hak melulu kalau kewajiban belum kelar wkwkwk. Pahami bedanya!"
+                    },
+                    {
+                        id: "les_ipas4_b6_2",
+                        title: "Peraturan: Dibuat Bukan Utk Dilanggar",
+                        description: "Kenapa sih harus ada aturan di sekolah dan rumah? Biar gak chaos, kawan."
+                    },
+                    {
+                        id: "les_ipas4_b6_3",
+                        title: "Manusia Makhluk Sosial",
+                        description: "Kita gak bisa hidup sendirian. Pentingnya gotong royong dan tegur sapa."
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab7",
+                title: "Bab 7: Budaya & Kearifan Lokal",
+                lessons: [
+                    {
+                        id: "les_ipas4_b7_1",
+                        title: "Apa itu Kearifan Lokal?",
+                        description: "Ilmu tititen atau kebiasaan turun temurun nenek moyang yang ternyata canggih."
+                    },
+                    {
+                        id: "les_ipas4_b7_2",
+                        title: "Ragam Budaya: Bhinneka Tunggal Ika",
+                        description: "Beda baju adat, beda bahasa, tapi tetap satu geng. Indahnya perbedaan!"
+                    },
+                    {
+                        id: "les_ipas4_b7_3",
+                        title: "Sikap Toleransi",
+                        description: "Cara menghargai teman yang beda suku atau agama. Jangan rasis ya!"
+                    }
+                ]
+            },
+            {
+                id: "mod_ipas4_bab8",
+                title: "Bab 8: Menyelamatkan Lingkungan",
+                lessons: [
+                    {
+                        id: "les_ipas4_b8_1",
+                        title: "Lingkungan yang Terancam",
+                        description: "Sampah plastik di mana-mana. Hewan laut nangis. Ayo sadar lingkungan!"
+                    },
+                    {
+                        id: "les_ipas4_b8_2",
+                        title: "Jejak Karbonmu Berapa?",
+                        description: "Cara ngurangin jejak karbon: Hemat listrik, kurangi naik motor, tanam pohon."
+                    },
+                    {
+                        id: "les_ipas4_b8_3",
+                        title: "Melestarikan Budaya Daerah",
+                        description: "Biar budaya gak punah dimakan jaman, kita sebagai generasi muda harus ngapain?"
+                    }
+                ]
+            }
+        ]
     }
 ];
