@@ -52,7 +52,7 @@ const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
 
 // --- AI STRATEGY CONFIGURATION ---
 // Tentukan urutan prioritas AI. ['gemini', 'groq'] artinya coba Gemini dulu, kalau gagal baru Groq.
-const AI_PRIORITY = ["gemini", "groq"];
+const AI_PRIORITY = ["groq", "gemini"];
 
 // Variabel Model Gemini (Untuk mengatasi jika model utama limit/error)
 const GEMINI_MODELS = [
@@ -85,31 +85,59 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
 
-// --- UTILS: MARKDOWN SIMPLIFIER ---
+// --- UTILS: MARKDOWN SIMPLIFIER (FIXED READABILITY) ---
 const parseInline = (text) => {
   if (!text || typeof text !== 'string') return null;
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\$.*?\$)/g);
+
+  // 1. Fix: Ubah literal "\n" menjadi baris baru sungguhan & hapus spasi berlebih
+  const cleanText = text.replace(/\\n/g, '\n').trim();
+
+  // Split berdasarkan Markdown syntax
+  const parts = cleanText.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\$.*?\$)/g);
+
   return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) return <strong key={index} className="text-slate-900 font-black">{part.slice(2, -2)}</strong>;
-    if (part.startsWith('*') && part.endsWith('*')) return <em key={index} className="text-blue-500 font-bold not-italic">{part.slice(1, -1)}</em>;
-    if (part.startsWith('`') && part.endsWith('`')) return <code key={index} className="bg-slate-100 px-1.5 py-0.5 rounded-lg text-pink-500 font-mono text-sm border-b-2 border-slate-200">{part.slice(1, -1)}</code>;
-    if (part.startsWith('$') && part.endsWith('$')) return <span key={index} className="font-mono text-blue-600 mx-1 bg-blue-50 px-1 rounded">{part}</span>;
+    // Bold: Hapus 'text-slate-900' agar warnanya ngikut parent (Putih di chat, Hitam di materi)
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={index} className="font-black tracking-tight">{part.slice(2, -2)}</strong>;
+
+    // Italic: Tetap pakai style lama (background biru muda) karena aman & bagus
+    if (part.startsWith('*') && part.endsWith('*'))
+      return <em key={index} className="text-blue-600 font-semibold not-italic bg-blue-50 px-1 rounded">{part.slice(1, -1)}</em>;
+
+    // Code: Tetap pakai style lama (background slate) karena aman
+    if (part.startsWith('`') && part.endsWith('`'))
+      return <code key={index} className="bg-slate-100 px-1.5 py-0.5 rounded-lg text-pink-600 font-mono text-[13px] font-bold border border-slate-200">{part.slice(1, -1)}</code>;
+
+    // Math: Tetap pakai style lama (background indigo) karena aman
+    if (part.startsWith('$') && part.endsWith('$'))
+      return (
+        <span key={index} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-serif italic mx-1 text-[13px] shadow-sm">
+          {part.slice(1, -1)}
+        </span>
+      );
+
     return part;
   });
 };
 
 const SimpleMarkdown = ({ text }) => {
   if (!text || typeof text !== 'string') return null;
-  const parts = text.split(/(```[\s\S]*?```)/g);
+
+  // Pre-processing: Handle literal \n dari JSON AI
+  const processedText = text.replace(/\\n/g, '\n');
+
+  const parts = processedText.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="space-y-4 text-slate-600 text-sm leading-relaxed">
+    // HAPUS 'text-slate-700' di sini agar warna teks fleksibel
+    <div className="space-y-3 text-[15px] leading-relaxed font-medium">
       {parts.map((part, i) => {
+        // Handle Code Block (Tetap sama)
         if (part.startsWith('```')) {
           const content = part.replace(/^```\w*\n?|```$/g, '');
           return (
-            <div key={i} className="bg-slate-800 p-4 rounded-2xl font-mono text-xs overflow-x-auto my-3 text-white shadow-lg shadow-slate-200">
-              <pre className="text-emerald-400">{content}</pre>
+            <div key={i} className="bg-[#1e1e1e] p-4 rounded-xl font-mono text-xs overflow-x-auto my-4 text-blue-300 shadow-md border border-slate-700">
+              <pre>{content}</pre>
             </div>
           );
         }
@@ -125,14 +153,15 @@ const SimpleMarkdown = ({ text }) => {
             const headers = tableBuffer[0].split('|').filter(c => c.trim()).map(c => c.trim());
             const rows = tableBuffer.slice(2).map(r => r.split('|').filter(c => c.trim()).map(c => c.trim()));
             elements.push(
-              <div key={`tbl-${i}-${elements.length}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200 shadow-sm">
+              // Tabel dikasih background putih transparan biar aman di mode gelap/terang
+              <div key={`tbl-${i}-${elements.length}`} className="overflow-x-auto my-4 rounded-xl border border-slate-200/60 shadow-sm bg-white/50">
                 <table className="w-full text-left text-sm border-collapse">
-                  <thead className="bg-blue-50 text-blue-700 font-bold uppercase text-xs">
-                    <tr>{headers.map((h, idx) => (<th key={idx} className="p-3 border-b border-blue-100 whitespace-nowrap">{parseInline(h)}</th>))}</tr>
+                  <thead className="bg-slate-50/80 text-slate-700 font-bold uppercase text-xs">
+                    <tr>{headers.map((h, idx) => (<th key={idx} className="p-3 border-b border-slate-200/50 whitespace-nowrap">{parseInline(h)}</th>))}</tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white">
+                  <tbody className="divide-y divide-slate-100 bg-white/80">
                     {rows.map((row, rIdx) => (
-                      <tr key={rIdx} className="hover:bg-slate-50">
+                      <tr key={rIdx} className="hover:bg-slate-50/50">
                         {row.map((cell, cIdx) => (<td key={cIdx} className="p-3 text-slate-600 leading-normal min-w-[150px]">{parseInline(cell)}</td>))}
                       </tr>
                     ))}
@@ -141,7 +170,7 @@ const SimpleMarkdown = ({ text }) => {
               </div>
             );
           } else {
-            tableBuffer.forEach((l, idx) => elements.push(<div key={`fallback-${i}-${idx}-${elements.length}`} className="leading-relaxed mb-2">{parseInline(l)}</div>));
+            tableBuffer.forEach((l, idx) => elements.push(<div key={`fallback-${i}-${idx}-${elements.length}`} className="leading-relaxed mb-1">{parseInline(l)}</div>));
           }
           tableBuffer = [];
         };
@@ -153,10 +182,18 @@ const SimpleMarkdown = ({ text }) => {
           } else {
             flushTable();
             if (!line) continue;
-            if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-black text-slate-800 mt-4 mb-2">{parseInline(line.slice(4))}</h3>);
-            else if (line.startsWith('## ')) elements.push(<h2 key={`${i}-${j}`} className="text-xl font-black text-blue-600 mt-6 mb-3 flex items-center gap-2">{parseInline(line.slice(3))}</h2>);
-            else if (line.startsWith('# ')) elements.push(<h1 key={`${i}-${j}`} className="text-2xl font-black text-slate-900 mt-6 mb-4">{parseInline(line.slice(2))}</h1>);
-            else if (line.startsWith('- ') || line.startsWith('* ')) elements.push(<div key={`${i}-${j}`} className="flex gap-3 ml-2 mb-2"><div className="min-w-[6px] h-[6px] rounded-full bg-blue-400 mt-2"></div><span className="leading-relaxed">{parseInline(line.slice(2))}</span></div>);
+
+            // Header: Hapus warna spesifik (slate-800, dll) ganti ke default/current color
+            if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-black mt-5 mb-2 opacity-90">{parseInline(line.slice(4))}</h3>);
+            else if (line.startsWith('## ')) elements.push(<h2 key={`${i}-${j}`} className="text-xl font-black mt-6 mb-3 pb-2 border-b border-current opacity-80">{parseInline(line.slice(3))}</h2>);
+            else if (line.startsWith('# ')) elements.push(<h1 key={`${i}-${j}`} className="text-2xl font-black mt-6 mb-4">{parseInline(line.slice(2))}</h1>);
+            // List: Gunakan bg-current (ikut warna teks) dengan opacity biar cocok di background apa saja
+            else if (line.startsWith('- ') || line.startsWith('* ')) elements.push(
+              <div key={`${i}-${j}`} className="flex gap-3 ml-1 mb-2 items-start">
+                <div className="min-w-[6px] h-[6px] rounded-full bg-current opacity-60 mt-2"></div>
+                <span className="leading-relaxed">{parseInline(line.slice(2))}</span>
+              </div>
+            );
             else elements.push(<div key={`${i}-${j}`} className="leading-relaxed mb-2">{parseInline(line)}</div>);
           }
         }
@@ -432,7 +469,7 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
   );
 };
 
-// [UPDATED] CourseMap - LURUS & RAPI (Vertical Straight Line)
+// [FIXED] CourseMap - Kembali ke Layout Kiri-Kanan + Garis Rapih (Background Block)
 const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet }) => {
   const isUnlocked = (lessonId, prevLessonId) => {
     if (!prevLessonId) return true;
@@ -445,11 +482,20 @@ const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet
     <div className="flex flex-col items-center py-10 pb-32 w-full max-w-2xl mx-auto">
       {activeCourse.modules.map((module, mIdx) => (
         <div key={module.id} className="w-full mb-12">
-          <div className="flex items-center justify-between mb-8 px-4">
-            <h3 className="text-slate-700 font-black text-xl uppercase tracking-tight">{module.title}</h3>
-            <button onClick={() => onOpenCheatSheet(module.title)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors border-2 border-transparent ${theme.text} hover:${theme.bgLight} hover:${theme.borderLight}`}>
-              📖 Rangkuman
-            </button>
+
+          {/* --- BAGIAN JUDUL MODUL (FINAL FIX) --- */}
+          {/* 1. sticky top-0: Biar nempel pas scroll (opsional, enak buat UX) */}
+          {/* 2. z-30 & bg-slate-50: INI KUNCINYA. Satu baris penuh dikasih background. */}
+          {/* Jadi garis vertikal di belakangnya otomatis "ketutup" sama baris ini. */}
+          <div className="sticky top-0 z-30 bg-slate-50 py-4 mb-8">
+            <div className="flex items-center justify-between px-4">
+              <h3 className="text-slate-700 font-black text-xl uppercase tracking-tight">{module.title}</h3>
+              <button onClick={() => onOpenCheatSheet(module.title)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors border-2 border-transparent ${theme.text} hover:${theme.bgLight} hover:${theme.borderLight}`}>
+                📖 <span className="hidden md:inline">Rangkuman</span>
+              </button>
+            </div>
+            {/* Hiasan: Garis pudar di bawah judul biar ada pemisah dikit (Opsional) */}
+            <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-b from-slate-50 to-transparent"></div>
           </div>
 
           <div className="space-y-6 relative flex flex-col items-center">
@@ -473,17 +519,20 @@ const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet
               }
 
               return (
-                <div key={lesson.id} className="relative z-10 w-full flex flex-col items-center">
-                  {/* Line to next lesson */}
+                <div key={lesson.id} className="relative z-10 w-full flex flex-col items-center group">
+                  {/* Garis ke pelajaran berikutnya */}
                   {lIdx < module.lessons.length - 1 && (
-                    <div className={`absolute top-1/2 left-1/2 w-2 h-24 -translate-x-1/2 -z-10 ${completed ? theme.bg : 'bg-slate-200'}`}></div>
-                  )}
-                  {/* Connection from previous module/lesson */}
-                  {lIdx === 0 && mIdx > 0 && (
-                    <div className={`absolute bottom-full left-1/2 w-2 h-16 -translate-x-1/2 -z-10 ${isPrevCompleted ? 'bg-slate-300' : 'bg-slate-200'}`}></div>
+                    <div className={`absolute top-1/2 left-1/2 w-2 h-36 md:h-24 -translate-x-1/2 -z-10 ${completed ? theme.bg : 'bg-slate-200'}`}></div>
                   )}
 
-                  {/* TOMBOL LEVEL (Background Solid biar nutup garis) */}
+                  {/* Garis penghubung antar Modul */}
+                  {lIdx === 0 && mIdx > 0 && (
+                    // z-0 dan panjang h-24. Karena Header di atasnya punya background,
+                    // bagian atas garis ini bakal ketutup, jadi kelihatan rapi.
+                    <div className={`absolute bottom-full left-1/2 w-2 h-24 -translate-x-1/2 -z-10 ${isPrevCompleted ? 'bg-slate-300' : 'bg-slate-200'}`}></div>
+                  )}
+
+                  {/* TOMBOL LEVEL */}
                   <button
                     onClick={() => unlocked && onStartLesson(lesson)}
                     disabled={!unlocked}
@@ -494,10 +543,22 @@ const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet
                         : <Star fill="currentColor" size={32} className={theme.textLight} />}
                   </button>
 
-                  {/* Floating Label */}
-                  <div className={`absolute left-1/2 ml-14 top-1/2 -translate-y-1/2 w-48 hidden md:block transition-all ${unlocked ? 'opacity-100' : 'opacity-30'}`}>
-                    <h4 className="font-bold text-slate-700">{lesson.title}</h4>
-                    <p className="text-xs text-slate-400">{lesson.description}</p>
+                  {/* LABEL JUDUL MATERI (Responsive) */}
+                  <div className={`
+                    mt-3 md:mt-0 
+                    md:absolute md:left-1/2 md:ml-14 md:top-1/2 md:-translate-y-1/2 
+                    w-48 text-center md:text-left 
+                    transition-all duration-500
+                    ${unlocked ? 'opacity-100' : 'opacity-40'}
+                    relative z-20 
+                  `}>
+                    {/* Background pelindung teks materi (Mobile & Laptop) */}
+                    {/* Ini biar garis timeline gak nembus teks materi kalau layar kecil */}
+                    <div className="inline-block md:block bg-slate-50 px-2 md:px-3 py-1 md:py-2 rounded-lg">
+                      <h4 className="font-bold text-slate-700 text-sm md:text-base leading-tight mb-1">{lesson.title}</h4>
+                      <p className="text-xs text-slate-400 font-medium leading-tight hidden md:block">{lesson.description}</p>
+                      <p className="text-[10px] text-slate-400 md:hidden leading-tight line-clamp-2">{lesson.description}</p>
+                    </div>
                   </div>
                 </div>
               );
@@ -1120,8 +1181,9 @@ const DailyQuestWidget = ({ onOpenQuest, onComplete, onQuestLoaded, activeCourse
   );
 };
 
+// [UPDATED] ChatDrawer - Better Font & Readability
 const ChatDrawer = ({ isOpen, onClose, topic }) => {
-  const [messages, setMessages] = useState([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal ${topic}?` }]);
+  const [messages, setMessages] = useState([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**?` }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
@@ -1141,25 +1203,48 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
 
   return (
     <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/20 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-500 text-white">
-          <h3 className="font-bold flex items-center gap-2"><Sparkles size={18} /> Tutor AI</h3>
-          <button onClick={onClose}><X className="text-blue-100 hover:text-white" /></button>
+      <div className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-600 text-white">
+          <h3 className="font-black text-lg flex items-center gap-2"><Sparkles size={20} className="text-yellow-300 fill-yellow-300" /> Tutor AI</h3>
+          <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-full transition-colors"><X className="text-white" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50" ref={scrollRef}>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50" ref={scrollRef}>
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm ${m.role === 'user' ? 'bg-blue-500 text-white rounded-tr-none' : 'bg-white text-slate-700 border border-slate-100 rounded-tl-none'}`}>
+              <div className={`
+                max-w-[85%] p-4 rounded-2xl shadow-sm text-[15px] leading-relaxed font-medium
+                ${m.role === 'user'
+                  ? 'bg-blue-600 text-white rounded-tr-none'
+                  : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}
+              `}>
                 <SimpleMarkdown text={m.text} />
               </div>
             </div>
           ))}
-          {loading && <div className="text-slate-400 text-xs italic ml-2 animate-pulse">Mengetik...</div>}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2 shadow-sm">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce delay-100"></div>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce delay-200"></div>
+              </div>
+            </div>
+          )}
         </div>
+
         <div className="p-4 bg-white border-t border-slate-100">
           <div className="flex gap-2">
-            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} placeholder="Ketik pertanyaan..." className="flex-1 bg-slate-100 border-transparent focus:bg-white border-2 focus:border-blue-400 rounded-xl px-4 py-3 text-slate-700 outline-none transition-all font-semibold" />
-            <button onClick={handleSend} disabled={loading} className="p-3 bg-blue-500 rounded-xl hover:bg-blue-400 transition-colors text-white shadow-lg shadow-blue-200"><ArrowRight /></button>
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              placeholder="Tanya apa aja..."
+              className="flex-1 bg-slate-100 border-2 border-transparent focus:bg-white focus:border-blue-500 rounded-xl px-4 py-3 text-slate-800 outline-none transition-all font-bold placeholder:text-slate-400"
+            />
+            <button onClick={handleSend} disabled={loading} className="p-3 bg-blue-600 rounded-xl hover:bg-blue-500 transition-colors text-white shadow-lg shadow-blue-200 active:scale-95 transform">
+              <ArrowRight strokeWidth={3} />
+            </button>
           </div>
         </div>
       </div>
