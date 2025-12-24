@@ -29,17 +29,21 @@ import {
   LogOut,
   MessageSquare,
   Network,
+  Pencil,
   Play,
   RefreshCw,
   Rocket,
+  Save,
   Search,
   Shield,
   Sparkles,
   Star,
   Target,
   Terminal,
+  Trash2,
   Trophy,
   X,
+  XCircle,
   Zap
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -305,33 +309,46 @@ const generateLessonTheory = async (title, courseTitle, description) => {
 };
 
 // 2. Generate Kuis Berdasarkan Teori Tadi
-const generateLessonQuiz = async (theoryContent) => {
+const generateLessonQuiz = async (theoryContent, isProgramming) => {
   const prompt = `
-    Role: Pembuat Soal Ujian Kritis & Teliti.
+    Role: Pembuat Soal Ujian Kritis & Teliti (Gaya Tentor Ruangguru/Zenius).
     
     Tugas:
-    Buat 5 soal pilihan ganda BERDASARKAN materi berikut ini.
-    Pastikan jawabannya BENAR-BENAR ADA di dalam materi tersebut. Jangan tanya hal di luar konteks materi ini.
-
+    Buat soal ujian BERDASARKAN materi berikut.
     Materi Referensi:
     """
     ${theoryContent}
     """
 
     Instruksi Output:
-    - Buat pas 5 soal.
-    - Penjelasan (explanation) harus SUPER LENGKAP dan DETAIL. Jelaskan kenapa jawaban benar itu benar, dan kenapa opsi lain salah.
-    - Output HANYA JSON MURNI (Array of Objects). Tanpa markdown block code.
+    1. Buat "multiple_choice": Array berisi 5 soal pilihan ganda.
+    2. UNTUK SETIAP SOAL, buat field "feedback" berupa Array string [Respon A, Respon B, Respon C, Respon D].
+       - Jika opsi itu BENAR: Beri apresiasi seru (Contoh: "Yoi bener banget! 🥳", "Mantap jiwa!", dll) lalu jelaskan kenapa itu benar.
+       - Jika opsi itu SALAH: Jelaskan secara spesifik kenapa OPSI TERSEBUT salah/kurang tepat, lalu beritahu konsep yang benar (Gaya mengajar ramah, jangan memarahi).
     
-    Format JSON:
-    [
-      { 
-        "question": "Pertanyaan...", 
-        "options": ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"], 
-        "correctAnswer": 0, 
-        "explanation": "Penjelasan detail..." 
-      }
-    ]
+    ${isProgramming ? `3. Buat "coding_challenge" (Essay).` : ``}
+    
+    Format JSON MURNI (Tanpa markdown code block):
+    {
+      "multiple_choice": [
+        { 
+          "question": "Pertanyaan...", 
+          "options": ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"], 
+          "correctAnswer": 0, 
+          "feedback": [
+             "Wah bener banget! Karena...", 
+             "Ups, kurang tepat. Opsi ini salah karena...", 
+             "Kurang pas kawan. Opsi ini sebenarnya...", 
+             "Salah. Yang benar itu..."
+          ] 
+        }
+      ]${isProgramming ? `,
+      "coding_challenge": {
+         "question": "Instruksi soal koding...",
+         "starter_code": "# Tulis kodemu disini",
+         "solution_keyword": "keyword"
+      }` : ``}
+    }
   `;
 
   const text = await smartAIFetch(prompt);
@@ -345,10 +362,32 @@ const generateLessonQuiz = async (theoryContent) => {
   }
 };
 
-const chatWithAI = async (context, query) => {
-  const prompt = `Konteks: "${context}". User: "${query}". Peran: Tutor Coding Gaul namun sangat pintar dan bijaksana. Jawab dalam BAHASA INDONESIA yang asik.`;
+// [UPDATED] Chat dengan Memori & Konteks
+const chatWithAI = async (topic, historyMessages) => {
+  // Ambil maksimal 10 pesan terakhir agar prompt tidak kepanjangan (Hemat Token & Biaya)
+  const recentHistory = historyMessages.slice(-10);
+
+  // Format percakapan menjadi teks skrip
+  const conversationText = recentHistory.map(m =>
+    `${m.role === 'user' ? 'Challenger (User)' : 'Tutor (AI)'}: ${m.text}`
+  ).join('\n');
+
+  const prompt = `
+    [SYSTEM]
+    Peran: Tutor Coding "Tutor AI" yang Gaul, Asik, tapi Pintar dan Bijaksana.
+    Konteks Materi Saat Ini: "${topic}".
+    Tugas: Jawab respon TERAKHIR dari User berdasarkan riwayat percakapan di bawah.
+    Gaya Bahasa: Bahasa Indonesia santai, gunakan emoji sesekali, memotivasi, dan to-the-point.
+    
+    [RIWAYAT PERCAKAPAN]
+    ${conversationText}
+    
+    [JAWABAN TUTOR]
+    (Berikan jawabanmu di sini):
+  `;
+
   const res = await smartAIFetch(prompt);
-  return res || "Sistem sibuk, coba lagi nanti ya Challenger!";
+  return res || "Waduh, sinyal otak AI lagi putus-nyambung nih. Coba tanya lagi ya!";
 };
 
 const runCodeWithAI = async (codeSnippet, language = "Python") => {
@@ -377,13 +416,37 @@ const generateDailyQuest = async (courseName) => {
   } catch (e) { return null; }
 };
 
+// [UPDATED] Verifikasi Kode dengan Skor Akurasi
 const verifyQuestSubmission = async (desc, code) => {
-  const prompt = `Nilai kode ini. Soal: ${desc}. Kode User: ${code}. Output HANYA JSON: { "correct": boolean, "feedback": "Feedback dalam Bahasa Indonesia format Markdown." }`;
+  const prompt = `
+    Role: Senior Code Reviewer.
+    Tugas: Nilai kode user berdasarkan soal: "${desc}".
+    Kode User:
+    """
+    ${code}
+    """
+    
+    Analisis:
+    1. Apakah kode berjalan tanpa error?
+    2. Apakah logika memecahkan masalah?
+    3. Apakah output sesuai permintaan?
+
+    Output WAJIB JSON MURNI:
+    {
+      "correct": boolean (true jika akurasi >= 80),
+      "accuracy": number (0-100, berikan 100 jika sempurna, 50-99 jika jalan tapi ada kurang dikit, <50 jika salah/error),
+      "feedback": "Komentar singkat & saran perbaikan (Bahasa Indonesia, markdown)"
+    }
+  `;
+
   const text = await smartAIFetch(prompt);
-  if (!text) return { correct: false, feedback: "Error koneksi." };
+  if (!text) return { correct: false, accuracy: 0, feedback: "Gagal terhubung ke AI juri." };
+
   try {
     return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
-  } catch (e) { return { correct: false, feedback: "Error validasi AI." }; }
+  } catch (e) {
+    return { correct: false, accuracy: 0, feedback: "Error membaca penilaian AI." };
+  }
 };
 
 const generateCheatSheet = async (moduleTitle) => {
@@ -428,7 +491,8 @@ const Loading = () => (
 
 // --- COMPONENTS & SIDEBAR ---
 
-const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink, isAnonymous }) => {
+// [UPDATED] Sidebar - Fix Tampilan Mobile (Lebih Rapi & Proporsional)
+const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, currentView, setCurrentView, onOpenCodeLab, onOpenProject, onOpenUplink, isAnonymous, showCodeLab }) => {
   const projectWinRate = userStats.totalProjectsFinished > 0
     ? Math.round((userStats.totalProjectScore || 0) / userStats.totalProjectsFinished)
     : 0;
@@ -439,23 +503,28 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
   else if (projectWinRate > 0) wrColor = 'text-red-500';
 
   return (
-    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-full bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-4 z-40 md:overflow-y-auto hide-scrollbar">
+    // UBAH 1: Padding container dikurangi di mobile (p-2) biar tidak terlalu tebal
+    <div className="fixed bottom-0 w-full md:w-80 md:relative md:h-full bg-white border-t md:border-t-0 md:border-r-2 border-slate-200 flex md:flex-col justify-between p-2 md:p-4 z-40 md:overflow-y-auto hide-scrollbar">
+
+      {/* Header Desktop (Tetap Sama) */}
       <div className="hidden md:flex items-center gap-3 px-4 py-3 mb-4">
-        {/* Klik Avatar buat ganti nama */}
-        <button onClick={onRename} className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200 hover:scale-105 transition-transform group relative">
-          <Zap fill="currentColor" />
-          <span className="absolute -bottom-8 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Ganti Nama</span>
+        <button onClick={onRename} className="group relative">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="w-12 h-12 rounded-xl object-contain bg-white shadow-lg shadow-blue-200 hover:scale-105 transition-transform"
+          />
+          <span className="absolute -bottom-8 left-0 bg-slate-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+            Ganti Nama
+          </span>
         </button>
 
         <div className="text-left">
           <h1 className="text-xl font-black text-slate-800 tracking-tight leading-none">Level<span className="text-blue-500">Up</span></h1>
           <div className="flex items-center gap-2">
-            {/* Tampilkan Nama User di sini */}
             <button onClick={onRename} className="text-xs font-bold text-slate-400 hover:text-blue-500 transition-colors text-left truncate max-w-[120px]">
               @{userName} ✏️
             </button>
-
-            {/* LOGIKA BARU: TOMBOL SYNC HANYA MUNCUL JIKA ANONIM */}
             {isAnonymous && (
               <button
                 onClick={handleGoogleLogin}
@@ -469,14 +538,13 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
         </div>
       </div>
 
-      <nav className="w-full flex md:flex-col justify-around md:justify-start gap-2">
-        {/* KITA DEFINISIKAN CLASS LENGKAP DI SINI BIAR TAILWIND BISA BACA */}
+      {/* UBAH 2: Navigasi Mobile pakai 'justify-evenly' biar jaraknya pas di layar lebar */}
+      <nav className="w-full flex md:flex-col justify-evenly md:justify-start gap-1 md:gap-2">
         {[
           {
             id: 'learn',
             icon: BookOpen,
             label: "Belajar",
-            // Class Lengkap untuk Blue
             activeClass: "bg-blue-50 text-blue-600 border-blue-400",
             hoverClass: "text-slate-400 border-transparent hover:bg-blue-50 hover:text-blue-600"
           },
@@ -484,7 +552,6 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
             id: 'leaderboard',
             icon: Trophy,
             label: "Peringkat",
-            // Class Lengkap untuk Yellow
             activeClass: "bg-yellow-50 text-yellow-600 border-yellow-400",
             hoverClass: "text-slate-400 border-transparent hover:bg-yellow-50 hover:text-yellow-600"
           },
@@ -492,25 +559,38 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
           <button
             key={item.id}
             onClick={() => setCurrentView(item.id)}
-            className={`flex items-center gap-4 p-4 rounded-2xl transition-all border-2 font-black uppercase text-sm tracking-wide 
+            // UBAH 3: Padding tombol di mobile dikurangi (p-3) biar muat banyak icon
+            className={`flex items-center gap-4 p-3 md:p-4 rounded-2xl transition-all border-2 font-black uppercase text-sm tracking-wide 
               ${currentView === item.id
                 ? item.activeClass
                 : item.hoverClass
               }`}
           >
-            <item.icon size={24} /> <span className="hidden md:inline">{item.label}</span>
+            {/* Ukuran icon di mobile sedikit diperkecil (20 vs 24) biar rapi */}
+            <item.icon size={20} className="md:w-6 md:h-6" /> <span className="hidden md:inline">{item.label}</span>
           </button>
         ))}
 
         <div className="hidden md:block h-px bg-slate-100 my-2 mx-4"></div>
-        <button onClick={onOpenCodeLab} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-purple-50 hover:text-purple-600 font-bold transition-all"><Terminal size={24} /> <span className="hidden md:inline">Lab Koding</span></button>
-        <button onClick={onOpenProject} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-pink-50 hover:text-pink-600 font-bold transition-all"><Rocket size={24} /> <span className="hidden md:inline">Cari Ide Proyek</span></button>
-        <button onClick={onOpenUplink} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 font-bold transition-all"><Network size={24} /> <span className="hidden md:inline">Tanya Konsep</span></button>
+
+        {/* Tombol Fitur Tambahan (CodeLab, Project, Uplink) */}
+        {showCodeLab && (
+          <button onClick={onOpenCodeLab} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl text-slate-500 hover:bg-purple-50 hover:text-purple-600 font-bold transition-all">
+            <Terminal size={20} className="md:w-6 md:h-6" /> <span className="hidden md:inline">Lab Koding</span>
+          </button>
+        )}
+
+        <button onClick={onOpenProject} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl text-slate-500 hover:bg-pink-50 hover:text-pink-600 font-bold transition-all">
+          <Rocket size={20} className="md:w-6 md:h-6" /> <span className="hidden md:inline">Cari Ide Proyek</span>
+        </button>
+
+        <button onClick={onOpenUplink} className="flex items-center gap-4 p-3 md:p-4 rounded-2xl text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 font-bold transition-all">
+          <Network size={20} className="md:w-6 md:h-6" /> <span className="hidden md:inline">Tanya Konsep</span>
+        </button>
       </nav>
 
+      {/* Footer Desktop (Tetap Sama) */}
       <div className="hidden md:flex flex-col gap-3 px-4 mt-auto mb-4 w-full">
-
-        {/* 1. TOMBOL LOGOUT (Sekarang posisinya di ATAS statistik) */}
         {!isAnonymous && (
           <button
             onClick={onLogout}
@@ -536,7 +616,7 @@ const Sidebar = ({ userStats, userName, onRename, handleGoogleLogin, onLogout, c
   );
 };
 
-// [FIXED] CourseMap - Kembali ke Layout Kiri-Kanan + Garis Rapih (Background Block)
+// [UPDATED] CourseMap - Support Legacy Data (Centang) & New Score (Angka)
 const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet }) => {
   const isUnlocked = (lessonId, prevLessonId) => {
     if (!prevLessonId) return true;
@@ -546,29 +626,38 @@ const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet
   const theme = getTheme(activeCourse.color);
 
   return (
-    <div className="flex flex-col items-center py-10 pb-32 w-full max-w-2xl mx-auto">
+    <div className="flex flex-col items-center py-10 pb-32 w-full">
       {activeCourse.modules.map((module, mIdx) => (
         <div key={module.id} className="w-full mb-12">
 
-          {/* --- BAGIAN JUDUL MODUL (FINAL FIX) --- */}
-          {/* 1. sticky top-0: Biar nempel pas scroll (opsional, enak buat UX) */}
-          {/* 2. z-30 & bg-slate-50: INI KUNCINYA. Satu baris penuh dikasih background. */}
-          {/* Jadi garis vertikal di belakangnya otomatis "ketutup" sama baris ini. */}
-          <div className="sticky top-0 z-30 bg-slate-50 py-4 mb-8">
-            <div className="flex items-center justify-between px-4">
-              <h3 className="text-slate-700 font-black text-xl uppercase tracking-tight">{module.title}</h3>
-              <button onClick={() => onOpenCheatSheet(module.title)} className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors border-2 border-transparent ${theme.text} hover:${theme.bgLight} hover:${theme.borderLight}`}>
+          {/* HEADER MODUL */}
+          <div className="sticky top-0 z-30 bg-slate-50 py-4 mb-8 w-full">
+            <div className="flex items-center justify-between px-4 w-full max-w-2xl mx-auto">
+              <h3 className="text-slate-700 font-black text-xl uppercase tracking-tight flex-1 pr-4">
+                {module.title}
+              </h3>
+              <button
+                onClick={() => onOpenCheatSheet(module.title)}
+                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-colors border-2 border-transparent ${theme.text} hover:${theme.bgLight} hover:${theme.borderLight}`}
+              >
                 📖 <span className="hidden md:inline">Rangkuman</span>
               </button>
             </div>
-            {/* Hiasan: Garis pudar di bawah judul biar ada pemisah dikit (Opsional) */}
             <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-b from-slate-50 to-transparent"></div>
           </div>
 
-          <div className="space-y-6 relative flex flex-col items-center">
+          <div className="space-y-6 relative flex flex-col items-center w-full max-w-2xl mx-auto">
             {module.lessons.map((lesson, lIdx) => {
               const unlocked = isUnlocked(lesson.id, previousLessonId);
-              const completed = userProgress[lesson.id]?.completed;
+
+              // Ambil data progress
+              const progressData = userProgress[lesson.id];
+              const completed = progressData?.completed;
+
+              // Cek apakah ada data skor (untuk pelajaran baru)
+              const hasScoreData = progressData?.score !== undefined && progressData?.maxScore !== undefined;
+              const scoreText = hasScoreData ? `${progressData.score}/${progressData.maxScore}` : null;
+
               const currentId = lesson.id;
               const isPrevCompleted = previousLessonId ? userProgress[previousLessonId]?.completed : true;
               previousLessonId = currentId;
@@ -587,40 +676,51 @@ const CourseMap = ({ activeCourse, userProgress, onStartLesson, onOpenCheatSheet
 
               return (
                 <div key={lesson.id} className="relative z-10 w-full flex flex-col items-center group">
-                  {/* Garis ke pelajaran berikutnya */}
+                  {/* Garis Konektor */}
                   {lIdx < module.lessons.length - 1 && (
                     <div className={`absolute top-1/2 left-1/2 w-2 h-36 md:h-24 -translate-x-1/2 -z-10 ${completed ? theme.bg : 'bg-slate-200'}`}></div>
                   )}
-
-                  {/* Garis penghubung antar Modul */}
                   {lIdx === 0 && mIdx > 0 && (
-                    // z-0 dan panjang h-24. Karena Header di atasnya punya background,
-                    // bagian atas garis ini bakal ketutup, jadi kelihatan rapi.
                     <div className={`absolute bottom-full left-1/2 w-2 h-24 -translate-x-1/2 -z-10 ${isPrevCompleted ? 'bg-slate-300' : 'bg-slate-200'}`}></div>
                   )}
 
                   {/* TOMBOL LEVEL */}
-                  <button
-                    onClick={() => unlocked && onStartLesson(lesson)}
-                    disabled={!unlocked}
-                    className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center border-4 ${borderClass} transition-all btn-3d shadow-lg z-20 ${bgClass} ${!unlocked && 'opacity-60 cursor-not-allowed'}`}
-                  >
-                    {completed ? <CheckCircle size={32} fill="currentColor" className="text-white" />
-                      : !unlocked ? <Lock size={28} />
-                        : <Star fill="currentColor" size={32} className={theme.textLight} />}
-                  </button>
+                  <div className="relative">
+                    <button
+                      onClick={() => unlocked && onStartLesson(lesson)}
+                      disabled={!unlocked}
+                      className={`w-20 h-20 md:w-24 md:h-24 rounded-full flex flex-col items-center justify-center border-4 ${borderClass} transition-all btn-3d shadow-lg z-20 ${bgClass} ${!unlocked && 'opacity-60 cursor-not-allowed'}`}
+                    >
+                      {completed ? <CheckCircle size={32} fill="currentColor" className="text-white" />
+                        : !unlocked ? <Lock size={28} />
+                          : <Star fill="currentColor" size={32} className={theme.textLight} />}
+                    </button>
 
-                  {/* LABEL JUDUL MATERI (Responsive) */}
+                    {/* BADGE PINTAR: Prioritaskan Skor Angka, Fallback ke Centang */}
+                    {completed && (
+                      scoreText ? (
+                        // TAMPILAN SKOR (Untuk pelajaran yang BARU dikerjakan)
+                        <div className="absolute -bottom-2 -right-2 bg-yellow-400 text-yellow-900 text-[10px] md:text-xs font-black px-2 py-1 rounded-full border-2 border-white shadow-md z-30 transform rotate-[-5deg] animate-in zoom-in">
+                          {scoreText}
+                        </div>
+                      ) : (
+                        // TAMPILAN CENTANG (Untuk pelajaran LAMA / Legacy data)
+                        <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-white shadow-sm z-30 animate-in zoom-in" title="Selesai (Data lama)">
+                          <CheckCircle size={14} strokeWidth={4} />
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  {/* LABEL JUDUL */}
                   <div className={`
                     mt-3 md:mt-0 
-                    md:absolute md:left-1/2 md:ml-14 md:top-1/2 md:-translate-y-1/2 
+                    md:absolute md:left-1/2 md:ml-16 md:top-1/2 md:-translate-y-1/2 
                     w-48 text-center md:text-left 
                     transition-all duration-500
                     ${unlocked ? 'opacity-100' : 'opacity-40'}
                     relative z-20 
                   `}>
-                    {/* Background pelindung teks materi (Mobile & Laptop) */}
-                    {/* Ini biar garis timeline gak nembus teks materi kalau layar kecil */}
                     <div className="inline-block md:block bg-slate-50 px-2 md:px-3 py-1 md:py-2 rounded-lg">
                       <h4 className="font-bold text-slate-700 text-sm md:text-base leading-tight mb-1">{lesson.title}</h4>
                       <p className="text-xs text-slate-400 font-medium leading-tight hidden md:block">{lesson.description}</p>
@@ -1248,21 +1348,81 @@ const DailyQuestWidget = ({ onOpenQuest, onComplete, onQuestLoaded, activeCourse
   );
 };
 
-// [UPDATED] ChatDrawer - Better Font & Readability
+// [UPDATED] ChatDrawer - Support Edit, Delete & Memory
 const ChatDrawer = ({ isOpen, onClose, topic }) => {
-  const [messages, setMessages] = useState([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**?` }]);
+  const initialMessage = { role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**? Cerita sini dong!` };
+  const [messages, setMessages] = useState([initialMessage]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
-  useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, [messages, isOpen]);
+  // State untuk Edit Message
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [editValue, setEditValue] = useState("");
 
+  // Auto-Reset saat ditutup (Sesuai request: Data dihapus jika user keluar)
+  useEffect(() => {
+    if (!isOpen) {
+      setMessages([initialMessage]);
+      setEditingIndex(null);
+      setLoading(false);
+    }
+  }, [isOpen, topic]);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isOpen, editingIndex]);
+
+  // Handle Kirim Pesan Baru
   const handleSend = async () => {
     if (!input.trim()) return;
-    const userMsg = input; setMessages(p => [...p, { role: 'user', text: userMsg }]);
-    setInput(""); setLoading(true);
-    const aiReply = await chatWithAI(topic, userMsg);
-    setMessages(p => [...p, { role: 'ai', text: aiReply }]);
+    const newMsg = { role: 'user', text: input };
+
+    // Update UI dulu
+    const newHistory = [...messages, newMsg];
+    setMessages(newHistory);
+    setInput("");
+    setLoading(true);
+
+    // Panggil AI dengan Memori
+    const aiReply = await chatWithAI(topic, newHistory);
+    setMessages(prev => [...prev, { role: 'ai', text: aiReply }]);
+    setLoading(false);
+  };
+
+  // Handle Hapus Pesan
+  const handleDelete = (index) => {
+    if (window.confirm("Hapus pesan ini?")) {
+      setMessages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // Handle Mulai Edit
+  const handleStartEdit = (index, text) => {
+    setEditingIndex(index);
+    setEditValue(text);
+  };
+
+  // Handle Simpan Edit (Regenerate Response)
+  const handleSaveEdit = async (index) => {
+    if (!editValue.trim()) return;
+
+    // 1. Potong history sampai pesan yang diedit (pesan setelahnya dihapus karena konteks berubah)
+    // index adalah posisi pesan user. Kita ambil 0 sampai index.
+    const slicedHistory = messages.slice(0, index);
+
+    // 2. Tambahkan pesan user yang baru
+    const updatedMsg = { role: 'user', text: editValue };
+    const newHistory = [...slicedHistory, updatedMsg];
+
+    // 3. Set State & Loading
+    setMessages(newHistory);
+    setEditingIndex(null);
+    setLoading(true);
+
+    // 4. Minta AI jawab ulang
+    const aiReply = await chatWithAI(topic, newHistory);
+    setMessages(prev => [...prev, { role: 'ai', text: aiReply }]);
     setLoading(false);
   };
 
@@ -1271,24 +1431,74 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
   return (
     <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/20 backdrop-blur-sm" onClick={onClose}>
       <div className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-600 text-white">
           <h3 className="font-black text-lg flex items-center gap-2"><Sparkles size={20} className="text-yellow-300 fill-yellow-300" /> Tutor AI</h3>
-          <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-full transition-colors"><X className="text-white" /></button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setMessages([initialMessage])} className="p-1.5 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors" title="Reset Chat">
+              <RefreshCw size={16} />
+            </button>
+            <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-full transition-colors"><X className="text-white" /></button>
+          </div>
         </div>
 
+        {/* Chat Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50" ref={scrollRef}>
           {messages.map((m, i) => (
-            <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={i} className={`group flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`
-                max-w-[85%] p-4 rounded-2xl shadow-sm text-[15px] leading-relaxed font-medium
+                max-w-[85%] p-4 rounded-2xl shadow-sm text-[15px] leading-relaxed font-medium relative
                 ${m.role === 'user'
                   ? 'bg-blue-600 text-white rounded-tr-none'
                   : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}
               `}>
-                <SimpleMarkdown text={m.text} />
+
+                {/* Tampilan Edit Mode */}
+                {editingIndex === i ? (
+                  <div className="flex flex-col gap-2 min-w-[200px]">
+                    <textarea
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                      className="w-full bg-blue-700 text-white p-2 rounded-lg text-sm focus:outline-none resize-none"
+                      rows={3}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setEditingIndex(null)} className="p-1 hover:bg-blue-500 rounded"><XCircle size={16} /></button>
+                      <button onClick={() => handleSaveEdit(i)} className="p-1 hover:bg-blue-500 rounded"><Save size={16} /></button>
+                    </div>
+                  </div>
+                ) : (
+                  // Tampilan Normal
+                  <>
+                    <SimpleMarkdown text={m.text} />
+
+                    {/* Action Buttons (Edit/Delete) - Hanya muncul saat hover & khusus pesan User */}
+                    {m.role === 'user' && (
+                      <div className="absolute -left-16 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleStartEdit(i, m.text)} className="p-1.5 bg-white text-slate-500 rounded-full shadow-md hover:text-blue-600 hover:scale-110 transition-all">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => handleDelete(i)} className="p-1.5 bg-white text-slate-500 rounded-full shadow-md hover:text-red-600 hover:scale-110 transition-all">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Hapus pesan AI juga boleh kalau mau bersih-bersih */}
+                    {m.role === 'ai' && i !== 0 && (
+                      <div className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => handleDelete(i)} className="p-1.5 bg-slate-200 text-slate-500 rounded-full hover:text-red-600 hover:bg-red-100 transition-all">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           ))}
+
           {loading && (
             <div className="flex justify-start">
               <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-2 shadow-sm">
@@ -1300,14 +1510,13 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
           )}
         </div>
 
+        {/* Input Area */}
         <div className="p-4 bg-white border-t border-slate-100">
           <div className="flex gap-2 items-end">
-            {/* GANTI INPUT JADI TEXTAREA */}
             <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => {
-                // Enter = Kirim, Shift+Enter = Baris Baru
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSend();
@@ -1317,7 +1526,6 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
               rows={1}
               className="flex-1 bg-slate-100 border-2 border-transparent focus:bg-white focus:border-blue-500 rounded-xl px-4 py-3 text-slate-800 outline-none transition-all font-bold placeholder:text-slate-400 resize-none min-h-[48px] max-h-[120px]"
               style={{ height: 'auto', overflow: 'hidden' }}
-              // Auto-resize height script simpel
               onInput={(e) => {
                 e.target.style.height = 'auto';
                 e.target.style.height = e.target.scrollHeight + 'px';
@@ -1373,108 +1581,202 @@ const CodeLabModal = ({ isOpen, onClose, activeCourse }) => {
   );
 };
 
-// [UPDATED] CyberLessonModal - Sequential Generation (Theory -> Quiz)
-const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat }) => {
+// [UPDATED] CyberLessonModal - Support Swipe (Mobile) & Keyboard Shortcuts (Desktop)
+const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat, isProgramming }) => {
   const [stage, setStage] = useState('theory');
   const [content, setContent] = useState(null);
 
-  // State Loading Spesifik
+  // Loading & Error
   const [loadingStatus, setLoadingStatus] = useState("Menginisialisasi...");
   const [isError, setIsError] = useState(false);
 
-  // State Navigasi & History
+  // Quiz State
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [quizHistory, setQuizHistory] = useState({});
   const [maxReached, setMaxReached] = useState(0);
   const [tempSelectedOption, setTempSelectedOption] = useState(null);
-  const [score, setScore] = useState(0);
 
-  // --- LOGIKA LOAD BERTAHAP ---
+  // SCORING STATE
+  const [mcqScore, setMcqScore] = useState(0);
+  const [essayPoints, setEssayPoints] = useState(0);
+
+  // Essay State
+  const [essayCode, setEssayCode] = useState("");
+  const [essayResult, setEssayResult] = useState(null);
+  const [checkingEssay, setCheckingEssay] = useState(false);
+
+  // --- TOUCH STATE (UNTUK SWIPE HP) ---
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
+
+  // --- Load Content ---
   const loadContent = async () => {
-    setIsError(false);
-    setContent(null);
-
+    setIsError(false); setContent(null);
     try {
-      // 1. Generate Materi Dulu
-      setLoadingStatus("Sedang menyusun materi lengkap...");
-      console.log(`🧠 Generating Theory: ${lesson.title}`);
-
+      setLoadingStatus("Menyusun materi...");
       const theoryText = await generateLessonTheory(lesson.title, courseTitle, lesson.description);
-
       if (!theoryText) throw new Error("Gagal generate materi.");
 
-      // 2. Generate Soal Berdasarkan Materi
-      setLoadingStatus("Sedang meracik soal dari materi...");
-      console.log(`🧠 Generating Quiz based on theory...`);
+      setLoadingStatus("Meracik soal...");
+      const quizData = await generateLessonQuiz(theoryText, isProgramming);
 
-      const quizData = await generateLessonQuiz(theoryText);
+      if (!quizData || !quizData.multiple_choice) throw new Error("Gagal generate soal.");
 
-      // Validasi Soal
-      const isQuizValid = quizData && Array.isArray(quizData) && quizData.length > 0 &&
-        quizData.every(q => q.options && q.options.length > 0);
-
-      if (!isQuizValid) throw new Error("Gagal generate soal yang valid.");
-
-      // 3. Set Content Gabungan
       setContent({
         theory: theoryText,
-        quiz: quizData
+        quiz: quizData.multiple_choice,
+        challenge: quizData.coding_challenge || null
       });
-
     } catch (error) {
-      console.error("❌ Error di CyberLessonModal:", error);
-      setIsError(true);
+      console.error(error); setIsError(true);
     }
   };
 
-  useEffect(() => {
-    loadContent();
-  }, [lesson, courseTitle]);
+  useEffect(() => { loadContent(); }, [lesson, courseTitle]);
 
   useEffect(() => {
-    setTempSelectedOption(null);
-  }, [currentQIndex]);
+    if (content?.challenge) setEssayCode(content.challenge.starter_code);
+  }, [content]);
+
+  useEffect(() => { setTempSelectedOption(null); }, [currentQIndex]);
+
+  // --- CORE ACTIONS ---
 
   const handleCheck = () => {
-    if (tempSelectedOption === null) return;
+    // Cegah double check atau check kosong
+    if (tempSelectedOption === null || quizHistory[currentQIndex]) return;
+
     const currentQ = content.quiz[currentQIndex];
     const isCorrect = tempSelectedOption === currentQ.correctAnswer;
-    const feedbackObj = { correct: isCorrect, text: currentQ.explanation };
+
+    // Feedback Dinamis
+    let feedbackText = "";
+    if (Array.isArray(currentQ.feedback) && currentQ.feedback[tempSelectedOption]) {
+      feedbackText = currentQ.feedback[tempSelectedOption];
+    } else {
+      feedbackText = isCorrect
+        ? "Jawaban kamu benar! 🎉 " + (currentQ.explanation || "")
+        : "Kurang tepat. 😅 " + (currentQ.explanation || "");
+    }
+
+    const feedbackObj = { correct: isCorrect, text: feedbackText };
     setQuizHistory(prev => ({ ...prev, [currentQIndex]: { selectedOption: tempSelectedOption, feedback: feedbackObj } }));
-    if (isCorrect) setScore(s => s + 1);
+
+    if (isCorrect) setMcqScore(s => s + 1);
     if (currentQIndex === maxReached) { setMaxReached(m => m + 1); }
   };
 
   const handleNext = () => {
-    if (currentQIndex < (content.quiz?.length || 0) - 1) { setCurrentQIndex(p => p + 1); } else { setStage('summary'); }
+    if (currentQIndex < (content.quiz.length) - 1) {
+      setCurrentQIndex(p => p + 1);
+    } else {
+      if (isProgramming && content.challenge) {
+        setStage('essay');
+      } else {
+        setStage('summary');
+      }
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentQIndex > 0) {
+      setCurrentQIndex(p => p - 1);
+    }
   };
 
   const jumpToQuestion = (index) => {
-    if (index <= maxReached && index < content.quiz.length) { setCurrentQIndex(index); }
+    if (index <= maxReached && index < content.quiz.length) { setCurrentQIndex(index); setStage('quiz'); }
   };
 
-  // --- RENDERING ERROR ---
-  if (isError) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in zoom-in-95">
-        <div className="bg-white rounded-3xl p-8 max-w-md text-center border-4 border-red-100 shadow-2xl">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle size={32} className="text-red-500" />
-          </div>
-          <h3 className="text-xl font-black text-slate-800 mb-2">Gagal Memproses</h3>
-          <p className="text-slate-500 text-sm mb-6">
-            AI mengalami kesulitan menyusun materi/soal yang sempurna.
-          </p>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="flex-1 py-3 bg-slate-100 font-bold text-slate-500 rounded-xl hover:bg-slate-200 transition-colors">Tutup</button>
-            <button onClick={loadContent} className="flex-1 py-3 bg-red-500 font-bold text-white rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-all active:scale-95">Coba Lagi ↻</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // --- KEYBOARD SHORTCUTS (DESKTOP) ---
+  useEffect(() => {
+    if (stage !== 'quiz') return;
 
-  // --- RENDERING LOADING (DENGAN STATUS TEXT) ---
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case 'ArrowLeft':
+          handlePrev();
+          break;
+        case 'ArrowRight':
+          // Hanya boleh ke kanan jika sudah pernah sampai sana (maxReached)
+          if (currentQIndex < maxReached) {
+            // Pindah ke soal berikutnya
+            setCurrentQIndex(prev => Math.min(prev + 1, content.quiz.length - 1));
+          } else if (quizHistory[currentQIndex]) {
+            // Jika soal ini sudah dijawab, boleh lanjut (handleNext logic)
+            handleNext();
+          }
+          break;
+        case 'Enter':
+          // LOGIKA ENTER PINTAR:
+          // 1. Jika belum jawab & sudah pilih opsi -> CEK JAWABAN
+          if (!quizHistory[currentQIndex] && tempSelectedOption !== null) {
+            handleCheck();
+          }
+          // 2. Jika sudah jawab -> LANJUT KE SOAL BERIKUTNYA
+          else if (quizHistory[currentQIndex]) {
+            handleNext();
+          }
+          break;
+        // Shortcut pilih jawaban (1, 2, 3, 4 atau A, B, C, D)
+        case '1': case 'a': if (!quizHistory[currentQIndex]) setTempSelectedOption(0); break;
+        case '2': case 'b': if (!quizHistory[currentQIndex]) setTempSelectedOption(1); break;
+        case '3': case 'c': if (!quizHistory[currentQIndex]) setTempSelectedOption(2); break;
+        case '4': case 'd': if (!quizHistory[currentQIndex]) setTempSelectedOption(3); break;
+        default: break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [stage, currentQIndex, maxReached, tempSelectedOption, quizHistory, content]);
+
+
+  // --- TOUCH HANDLERS (SWIPE HP) ---
+  const minSwipeDistance = 50;
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      // Swipe Kiri (Next) -> Logika sama kayak ArrowRight
+      if (currentQIndex < maxReached) {
+        setCurrentQIndex(prev => Math.min(prev + 1, content.quiz.length - 1));
+      } else if (quizHistory[currentQIndex]) {
+        handleNext();
+      }
+    } else if (isRightSwipe) {
+      // Swipe Kanan (Prev)
+      handlePrev();
+    }
+  };
+
+  // --- Handle Essay Check ---
+  const handleCheckEssay = async () => {
+    setCheckingEssay(true);
+    const res = await verifyQuestSubmission(content.challenge.question, essayCode);
+    setEssayResult(res);
+
+    let points = 0;
+    if (res.accuracy === 100) points = 2;
+    else if (res.accuracy >= 50) points = 1;
+
+    setEssayPoints(points);
+    setCheckingEssay(false);
+  };
+
+  if (isError) return (<div className="fixed inset-0 z-50 flex items-center justify-center bg-white"><div className="text-center"><h3 className="font-bold text-lg">Gagal memuat.</h3><button onClick={onClose} className="mt-4 bg-slate-200 px-4 py-2 rounded-lg">Tutup</button></div></div>);
+
   if (!content) return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col items-center justify-center">
       <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-500 rounded-full animate-spin mb-4"></div>
@@ -1482,16 +1784,15 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
     </div>
   );
 
-  const passed = score >= 3;
-  const currentHistory = quizHistory[currentQIndex];
-  const isAnswered = !!currentHistory;
-  const currentQuestion = content.quiz[currentQIndex];
+  const finalScore = mcqScore + essayPoints;
+  const kkm = Math.ceil(content.quiz.length / 2);
+  const passed = finalScore > kkm;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in zoom-in-95 duration-200">
       <div className="w-full max-w-3xl h-[90vh] bg-white rounded-[40px] shadow-2xl flex flex-col overflow-hidden border-8 border-white">
 
-        {/* HEADER MODAL */}
+        {/* HEADER */}
         <div className="p-6 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="w-full">
             <div className="flex justify-between items-center mb-2">
@@ -1499,58 +1800,67 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
               <div className="flex gap-1">
                 {content.quiz.map((_, i) => {
                   let dotClass = "w-4 bg-slate-200 cursor-not-allowed";
-                  if (i === currentQIndex) { dotClass = "w-8 bg-blue-500"; }
-                  else if (i < currentQIndex || i <= maxReached) {
+                  if (stage === 'quiz' && i === currentQIndex) { dotClass = "w-8 bg-blue-500"; }
+                  else if (i <= maxReached || stage === 'essay' || stage === 'summary') {
                     const hist = quizHistory[i];
-                    if (hist?.feedback?.correct) dotClass = "w-4 bg-green-400 hover:bg-green-500 cursor-pointer";
-                    else if (hist) dotClass = "w-4 bg-red-400 hover:bg-red-500 cursor-pointer";
-                    else dotClass = "w-4 bg-slate-300 hover:bg-slate-400 cursor-pointer";
+                    if (hist?.feedback?.correct) dotClass = "w-4 bg-green-400 cursor-pointer";
+                    else if (hist) dotClass = "w-4 bg-red-400 cursor-pointer";
+                    else dotClass = "w-4 bg-slate-300 cursor-pointer";
                   }
-                  return <button key={i} onClick={() => jumpToQuestion(i)} disabled={i > maxReached} className={`h-2 rounded-full transition-all ${dotClass}`} title={`Soal ${i + 1}`} />;
+                  return <button key={i} onClick={() => jumpToQuestion(i)} disabled={stage === 'essay' || stage === 'summary' ? false : i > maxReached} className={`h-2 rounded-full transition-all ${dotClass}`} />;
                 })}
+                {content.challenge && (
+                  <div className={`h-2 rounded-full transition-all ml-2 ${stage === 'essay' ? 'w-8 bg-purple-500' : (stage === 'summary' ? (essayPoints > 0 ? 'w-4 bg-green-400' : 'w-4 bg-red-400') : 'w-4 bg-slate-200')} `} />
+                )}
               </div>
               <div className="w-8"></div>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 relative">
-          {/* --- STAGE 1: TEORI --- */}
+        <div className="flex-1 overflow-y-auto p-8 relative"
+          // PASANG EVENT TOUCH DI SINI (CONTAINER UTAMA)
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+
+          {/* STAGE 1: TEORI */}
           {stage === 'theory' && (
             <div className="max-w-xl mx-auto">
               <h2 className="text-3xl font-black text-slate-800 mb-6">{lesson.title}</h2>
               <div className="prose prose-slate prose-lg mb-8"><SimpleMarkdown text={content.theory} /></div>
               <div className="sticky bottom-0 bg-white/80 backdrop-blur p-4 border-t border-slate-100">
                 <button onClick={() => setStage('quiz')} className="w-full bg-blue-500 hover:bg-blue-400 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d shadow-lg shadow-blue-200">
-                  {maxReached > 0 ? "LANJUTKAN KUIS 🚀" : "MULAI KUIS"}
+                  MULAI KUIS (ENTER)
                 </button>
               </div>
             </div>
           )}
 
-          {/* --- STAGE 2: KUIS --- */}
-          {stage === 'quiz' && currentQuestion && (
+          {/* STAGE 2: KUIS MCQ */}
+          {stage === 'quiz' && (
             <div className="max-w-xl mx-auto pt-4">
               <div className="mb-6 flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pertanyaan {currentQIndex + 1} dari {content.quiz.length}</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pertanyaan {currentQIndex + 1}</span>
                 <button onClick={() => setStage('theory')} className="flex items-center gap-2 text-xs font-bold text-blue-500 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors"><BookOpen size={14} /> LIHAT MATERI</button>
               </div>
 
               <h3 className="text-xl font-bold text-slate-700 mb-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                {currentQuestion.question}
+                {content.quiz[currentQIndex].question}
               </h3>
 
               <div className="space-y-4">
-                {currentQuestion.options?.map((opt, idx) => {
+                {content.quiz[currentQIndex].options.map((opt, idx) => {
                   let stateStyle = "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-blue-300";
-                  const displayFeedback = isAnswered ? currentHistory.feedback : null;
-                  const displaySelected = isAnswered ? currentHistory.selectedOption : tempSelectedOption;
+                  const isAnswered = !!quizHistory[currentQIndex];
+                  const hist = quizHistory[currentQIndex];
 
-                  if (displayFeedback) {
-                    if (idx === currentQuestion.correctAnswer) stateStyle = "bg-green-100 border-green-400 text-green-700 opacity-100";
-                    else if (idx === displaySelected) stateStyle = "bg-red-100 border-red-400 text-red-700 opacity-60";
+                  if (isAnswered) {
+                    if (idx === content.quiz[currentQIndex].correctAnswer) stateStyle = "bg-green-100 border-green-400 text-green-700 opacity-100";
+                    else if (idx === hist.selectedOption) stateStyle = "bg-red-100 border-red-400 text-red-700 opacity-60";
                     else stateStyle = "bg-slate-50 border-slate-100 text-slate-300 opacity-50";
-                  } else if (idx === displaySelected) { stateStyle = "bg-blue-100 border-blue-400 text-blue-700 ring-2 ring-blue-200"; }
+                  } else if (idx === tempSelectedOption) { stateStyle = "bg-blue-100 border-blue-400 text-blue-700 ring-2 ring-blue-200"; }
 
                   return (
                     <button key={idx} onClick={() => !isAnswered && setTempSelectedOption(idx)} disabled={isAnswered} className={`w-full p-5 rounded-2xl border-2 border-b-4 text-left font-bold transition-all ${stateStyle} ${!isAnswered && 'active:border-b-2 active:translate-y-1'}`}>
@@ -1561,23 +1871,77 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
               </div>
 
               <div className="mt-8">
-                {!isAnswered ? (
-                  <button onClick={handleCheck} disabled={tempSelectedOption === null} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1 transition-all btn-3d disabled:opacity-50 disabled:cursor-not-allowed">KUNCI JAWABAN 🔒</button>
+                {!quizHistory[currentQIndex] ? (
+                  <button onClick={handleCheck} disabled={tempSelectedOption === null} className="w-full bg-green-500 text-white font-black py-4 rounded-2xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1 transition-all btn-3d disabled:opacity-50">
+                    KUNCI JAWABAN (ENTER) 🔒
+                  </button>
                 ) : (
                   <div className="animate-in slide-in-from-bottom-4 fade-in duration-300">
-                    <div className={`p-4 rounded-2xl mb-4 ${currentHistory.feedback.correct ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                      <p className="font-bold mb-1">{currentHistory.feedback.correct ? "Kamu Benar! 🎉" : "Ups, kurang tepat 😅"}</p>
-                      <div className="text-sm"><SimpleMarkdown text={currentHistory.feedback.text} /></div>
+                    <div className={`p-4 rounded-2xl mb-4 ${quizHistory[currentQIndex].feedback.correct ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                      <p className="font-bold mb-1">{quizHistory[currentQIndex].feedback.correct ? "Kamu Benar! 🎉" : "Ups, kurang tepat 😅"}</p>
+                      <div className="text-sm"><SimpleMarkdown text={quizHistory[currentQIndex].feedback.text} /></div>
                     </div>
-                    <button onClick={handleNext} className={`w-full font-black py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all btn-3d text-white ${currentHistory.feedback.correct ? 'bg-blue-500 border-blue-700' : 'bg-slate-500 border-slate-700 hover:bg-slate-400'}`}>
-                      {currentQIndex < content.quiz.length - 1 ? "LANJUT SOAL BERIKUTNYA 👉" : "LIHAT HASIL AKHIR 🏆"}
+                    <button onClick={handleNext} className="w-full bg-blue-500 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d">
+                      LANJUT (ENTER) 👉
                     </button>
                   </div>
                 )}
               </div>
+
+              {/* Petunjuk Shortcut Desktop (Hanya muncul di layar besar) */}
+              <div className="hidden md:flex justify-center gap-4 mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-wider opacity-60">
+                <span>[ ← ] Back</span>
+                <span>[ Enter ] Confirm/Next</span>
+                <span>[ → ] Next</span>
+                <span>[ 1-4 ] Pilih Jawaban</span>
+              </div>
             </div>
           )}
 
+          {/* STAGE 3: ESSAY CODING */}
+          {stage === 'essay' && content.challenge && (
+            <div className="max-w-xl mx-auto pt-4 animate-in slide-in-from-right-8">
+              <div className="mb-4 bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold border-l-4 border-purple-500 flex items-center gap-2">
+                <Terminal size={18} /> TANTANGAN KODING
+              </div>
+              <h3 className="text-xl font-black text-slate-800 mb-4">{content.challenge.question}</h3>
+
+              <div className="bg-slate-900 rounded-xl overflow-hidden border-4 border-slate-800 mb-4">
+                <div className="bg-slate-800 px-4 py-2 text-xs text-slate-400 font-mono flex justify-between">
+                  <span>editor.py</span>
+                  <span>Python/R</span>
+                </div>
+                <textarea
+                  value={essayCode}
+                  onChange={e => setEssayCode(e.target.value)}
+                  className="w-full h-48 bg-[#0d0d0d] text-blue-300 font-mono p-4 resize-none focus:outline-none text-sm"
+                  spellCheck="false"
+                />
+              </div>
+
+              {essayResult && (
+                <div className={`p-4 rounded-2xl mb-4 border-l-4 ${essayResult.accuracy >= 50 ? 'bg-green-50 border-green-500 text-green-800' : 'bg-red-50 border-red-500 text-red-800'}`}>
+                  <div className="flex justify-between items-center mb-1">
+                    <h4 className="font-bold">{essayResult.accuracy === 100 ? "Sempurna! (2 Poin)" : essayResult.accuracy >= 50 ? "Lumayan (1 Poin)" : "Perbaiki lagi (0 Poin)"}</h4>
+                    <span className="text-xs font-black bg-white/50 px-2 py-1 rounded">Akurasi: {essayResult.accuracy}%</span>
+                  </div>
+                  <div className="text-sm"><SimpleMarkdown text={essayResult.feedback} /></div>
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button onClick={handleCheckEssay} disabled={checkingEssay} className="flex-1 bg-purple-500 hover:bg-purple-400 text-white font-bold py-3 rounded-xl border-b-4 border-purple-700 active:border-b-0 active:translate-y-1 btn-3d transition-all flex justify-center items-center gap-2">
+                  {checkingEssay ? <RefreshCw className="animate-spin" /> : <Play fill="currentColor" />} {checkingEssay ? "MENILAI..." : "CEK KODE"}
+                </button>
+
+                <button onClick={() => setStage('summary')} className={`flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl border-b-4 border-slate-400 active:border-b-0 active:translate-y-1 btn-3d transition-all ${essayPoints > 0 ? 'bg-green-500 text-white border-green-700 hover:bg-green-400' : ''}`}>
+                  {essayPoints > 0 ? "LANJUT HASIL 🏆" : "LEWATI"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STAGE 4: SUMMARY */}
           {stage === 'summary' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               {passed ? (
@@ -1585,12 +1949,34 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
               ) : (
                 <div className="mb-6 flex flex-col items-center"><AlertTriangle size={80} className="text-red-500 drop-shadow-lg" /><h2 className="text-3xl font-black text-red-500 mt-2">MISI GAGAL</h2></div>
               )}
-              <p className="text-slate-500 mb-8 font-bold text-lg">Skor Kamu: {score} / {content.quiz.length}</p>
+
+              <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100 mb-8 w-full max-w-sm">
+                <p className="text-slate-400 font-bold text-xs uppercase mb-2">Rapor Nilai</p>
+                <div className="flex justify-between text-sm mb-1"><span>Pilihan Ganda:</span> <span className="font-bold">{mcqScore}</span></div>
+                <div className="flex justify-between text-sm mb-3 border-b border-slate-200 pb-3"><span>Coding Challenge:</span> <span className="font-bold">{essayPoints}</span></div>
+                <div className="flex justify-between text-lg font-black text-slate-800"><span>TOTAL SKOR:</span> <span>{finalScore}</span></div>
+                <div className="mt-2 text-xs text-center text-slate-400">Target Lulus: &gt; {kkm} Poin</div>
+              </div>
+
               <div className="flex gap-4 w-full max-w-sm">
                 {passed ? (
-                  <button onClick={() => { onComplete(); onClose(); }} className="flex-1 bg-blue-500 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d">KEMBALI KE MAP</button>
+                  <button onClick={() => {
+                    onComplete({
+                      mcqScore,
+                      essayPoints,
+                      totalQuestions: content.quiz.length,
+                      hasEssay: !!content.challenge
+                    });
+                    onClose();
+                  }} className="flex-1 bg-blue-500 text-white font-black py-4 rounded-2xl border-b-4 border-blue-700 active:border-b-0 active:translate-y-1 transition-all btn-3d">
+                    KEMBALI KE MAP
+                  </button>
                 ) : (
-                  <button onClick={() => { setStage('quiz'); setCurrentQIndex(0); setScore(0); setQuizHistory({}); setMaxReached(0); setTempSelectedOption(null); }} className="flex-1 bg-slate-200 text-slate-600 font-black py-4 rounded-2xl border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all btn-3d">ULANGI</button>
+                  <button onClick={() => {
+                    setStage('quiz'); setCurrentQIndex(0); setMcqScore(0); setEssayPoints(0); setQuizHistory({}); setMaxReached(0); setTempSelectedOption(null); setEssayResult(null); setEssayCode(content.challenge?.starter_code || "");
+                  }} className="flex-1 bg-slate-200 text-slate-600 font-black py-4 rounded-2xl border-b-4 border-slate-300 active:border-b-0 active:translate-y-1 transition-all btn-3d">
+                    ULANGI
+                  </button>
                 )}
               </div>
             </div>
@@ -1615,9 +2001,11 @@ const SetupProfileModal = ({ isOpen, onSave }) => {
         {/* Hiasan Atas */}
         <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
 
-        <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-blue-100 shadow-inner animate-bounce">
-          <Zap size={48} className="text-blue-500" fill="currentColor" />
-        </div>
+        <img
+          src="/logo.png"
+          alt="Logo"
+          className="w-24 h-24 rounded-full mx-auto mb-6 border-4 border-blue-100 shadow-xl animate-bounce object-contain bg-white"
+        />
 
         <h2 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">IDENTITAS BARU</h2>
         <p className="text-slate-400 font-bold text-sm mb-8 leading-relaxed">
@@ -1662,9 +2050,11 @@ const WelcomeScreen = ({ onLogin, onGuestLogin }) => {
         {/* Header Visual */}
         <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-10 flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-          <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center shadow-lg mb-4 ring-4 ring-white/30">
-            <Zap size={48} className="text-yellow-300 fill-yellow-300 drop-shadow-md" />
-          </div>
+          <img
+            src="/logo.png"
+            alt="App Logo"
+            className="w-24 h-24 rounded-3xl object-contain bg-white/20 backdrop-blur-md shadow-lg mb-4 ring-4 ring-white/30 p-2"
+          />
           <h1 className="text-3xl font-black text-white tracking-tight">Level<span className="text-yellow-300">Up</span></h1>
           <p className="text-blue-100 font-medium text-sm mt-2">Platform Belajar Dengan AI #1</p>
         </div>
@@ -1962,10 +2352,40 @@ export default function App() {
     }
   }, [user, userStats, isDataLoaded]);
 
-  const handleLessonComplete = async () => {
+  // [UPDATED] Handle Complete: Simpan Skor ke Database
+  const handleLessonComplete = async (results) => {
     if (!user || !activeLesson) return;
-    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'progress', activeLesson.id), { completed: true, completedAt: serverTimestamp() }, { merge: true });
-    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), { xp: increment(50), lessonsCompleted: increment(1) });
+
+    // Ambil data hasil (kasih default 0 jika error/kosong)
+    const mcqScore = results?.mcqScore || 0;
+    const essayPoints = results?.essayPoints || 0;
+    const totalQuestions = results?.totalQuestions || 0;
+    const hasEssay = results?.hasEssay || false;
+
+    // --- RUMUS XP ---
+    const xpFromMcq = mcqScore * 10;
+    const xpFromEssay = essayPoints * 25;
+    const totalXpGained = xpFromMcq + xpFromEssay;
+
+    // --- FORMAT SKOR ---
+    // Hitung skor akhir untuk ditampilkan di Map
+    const finalScore = mcqScore + (essayPoints > 0 ? 1 : 0);
+    const maxScore = totalQuestions + (hasEssay ? 1 : 0);
+
+    // 1. Simpan Progress Lengkap
+    await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'progress', activeLesson.id), {
+      completed: true,
+      score: finalScore,      // PENTING: Ini data angka yang akan ditampilkan
+      maxScore: maxScore,     // PENTING: Ini data total soal
+      xpEarned: totalXpGained,
+      completedAt: serverTimestamp()
+    }, { merge: true });
+
+    // 2. Update Total XP User
+    await updateDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'stats', 'main'), {
+      xp: increment(totalXpGained),
+      lessonsCompleted: increment(1)
+    });
   };
 
   const handleQuestComplete = async (xp) => {
@@ -2177,6 +2597,7 @@ export default function App() {
           onOpenProject={() => setShowProjectModal(true)}
           onOpenUplink={() => setShowUplink(true)}
           isAnonymous={user.isAnonymous}
+          showCodeLab={activeCourse.isProgramming}
         />
 
         <main className="flex-1 relative overflow-y-auto hide-scrollbar">
@@ -2184,9 +2605,11 @@ export default function App() {
           <div className="md:hidden flex justify-between items-center px-4 py-4 bg-white border-b border-slate-100 sticky top-0 z-30 shadow-sm">
             <div className="flex items-center gap-2">
               <button onClick={handleRename} className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white">
-                  <Zap size={20} fill="currentColor" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Logo"
+                  className="w-10 h-10 rounded-full object-contain bg-white shadow-sm border border-slate-100"
+                />
                 <div className="text-left">
                   <p className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-1">Challenger</p>
                   <h1 className="font-black text-slate-800 text-sm truncate max-w-[120px]">@{userStats.displayName || "KAMU"}</h1>
@@ -2279,7 +2702,7 @@ export default function App() {
         />
 
         <ProtocolSelectModal isOpen={showProtocolModal} onClose={() => setShowProtocolModal(false)} activeCourseId={activeCourseId} onSelectCourse={setActiveCourseId} />
-        {activeLesson && <CyberLessonModal lesson={activeLesson} courseTitle={activeCourse.title} onClose={() => { setActiveLesson(null); setShowChat(false); }} onComplete={handleLessonComplete} onOpenChat={() => setShowChat(true)} />}
+        {activeLesson && <CyberLessonModal lesson={activeLesson} courseTitle={activeCourse.title} onClose={() => { setActiveLesson(null); setShowChat(false); }} onComplete={handleLessonComplete} onOpenChat={() => setShowChat(true)} isProgramming={activeCourse.isProgramming} />}
         <CodeLabModal isOpen={showCodeLab} onClose={() => setShowCodeLab(false)} activeCourse={activeCourse} />
         <ChatDrawer isOpen={showChat} onClose={() => setShowChat(false)} topic={activeLesson ? activeLesson.title : ''} />
         {showQuestModal && activeQuest && <QuestSolverModal quest={activeQuest} onClose={() => setShowQuestModal(false)} onComplete={handleQuestComplete} />}

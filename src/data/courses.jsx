@@ -6,6 +6,7 @@ export const COURSES_DATA = [
         id: "python_protocol",
         title: "PYTHON",
         description: "Kuasai bahasa python. Bangun backend, skrip, dan model AI.",
+        isProgramming: true,
         color: "blue",
         icon: <Terminal size={24} />,
         codeConfig: {
@@ -993,6 +994,7 @@ export const COURSES_DATA = [
         id: "statistika_mastery",
         title: "STATISTIKA",
         description: "Dari nol sampai jago analisis data & machine learning.",
+        isProgramming: true,
         color: "pink",
         icon: <Terminal size={24} />,
         codeConfig: {
@@ -1894,6 +1896,7 @@ export const COURSES_DATA = [
         id: "ipas_kelas4",
         title: "IPAS Kelas 4",
         description: "Pelajari konsep dasar IPA dan Matematika yang menyenangkan untuk siswa kelas 4 SD.",
+        isProgramming: false,
         color: "purple",
         icon: <Terminal size={24} />,
         codeConfig: {
