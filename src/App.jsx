@@ -85,30 +85,29 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
 
-// --- UTILS: MARKDOWN SIMPLIFIER (UPDATED WITH BLOCKQUOTE & HR) ---
+// --- UTILS: MARKDOWN SIMPLIFIER (FINAL FIX) ---
 const parseInline = (text) => {
   if (!text || typeof text !== 'string') return null;
 
-  // 1. Fix: Ubah literal "\n" menjadi baris baru sungguhan & hapus spasi berlebih
   const cleanText = text.replace(/\\n/g, '\n').trim();
 
-  // Split berdasarkan Markdown syntax
-  const parts = cleanText.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`|\$.*?\$)/g);
+  // FIX REGEX: Gunakan [\s\S] menggantikan . agar bisa membaca baris baru (multiline bold)
+  const parts = cleanText.split(/(\*\*[\s\S]*?\*\*|\*[\s\S]*?\*|`.*?`|\$.*?\$)/g);
 
   return parts.map((part, index) => {
-    // Bold: Hapus 'text-slate-900' agar warnanya ngikut parent
+    // Bold: Ubah font-black jadi font-bold agar tidak terlalu "nge-gas" tebalnya
     if (part.startsWith('**') && part.endsWith('**'))
-      return <strong key={index} className="font-black tracking-tight">{part.slice(2, -2)}</strong>;
+      return <strong key={index} className="font-bold tracking-tight">{part.slice(2, -2)}</strong>;
 
-    // Italic: Tetap pakai style lama
+    // Italic
     if (part.startsWith('*') && part.endsWith('*'))
       return <em key={index} className="text-blue-600 font-semibold not-italic bg-blue-50 px-1 rounded">{part.slice(1, -1)}</em>;
 
-    // Code: Tetap pakai style lama
+    // Code
     if (part.startsWith('`') && part.endsWith('`'))
       return <code key={index} className="bg-slate-100 px-1.5 py-0.5 rounded-lg text-pink-600 font-mono text-[13px] font-bold border border-slate-200">{part.slice(1, -1)}</code>;
 
-    // Math: Tetap pakai style lama
+    // Math
     if (part.startsWith('$') && part.endsWith('$'))
       return (
         <span key={index} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-serif italic mx-1 text-[13px] shadow-sm">
@@ -126,7 +125,7 @@ const SimpleMarkdown = ({ text }) => {
   // Pre-processing
   let processedText = text.replace(/\\n/g, '\n');
 
-  // --- [LOGIKA UNWRAPPER] ---
+  // --- LOGIKA UNWRAPPER (Tetap Sama) ---
   const trimmed = processedText.trim();
   if ((trimmed.startsWith("```markdown") || trimmed.startsWith("```md")) && trimmed.endsWith("```")) {
     const lines = trimmed.split('\n');
@@ -139,7 +138,8 @@ const SimpleMarkdown = ({ text }) => {
   const parts = processedText.split(/(```[\s\S]*?```)/g);
 
   return (
-    <div className="space-y-3 text-[15px] leading-relaxed font-medium">
+    // FIX: Tambahkan 'font-sans' agar font konsisten meski hasil copy-paste
+    <div className="space-y-3 text-[15px] leading-relaxed font-medium font-sans">
       {parts.map((part, i) => {
         // Handle Code Block
         if (part.startsWith('```')) {
@@ -191,23 +191,17 @@ const SimpleMarkdown = ({ text }) => {
             flushTable();
             if (!line) continue;
 
-            // [UPDATE] Horizontal Rule (---) yang lebih fleksibel
-            // Sekarang support '---', '***', atau '___' meskipun ada spasi di belakangnya
-            const isHorizontalRule = /^(?:---|___|\*\*\*)\s*$/.test(line);
-
-            if (isHorizontalRule) {
+            // Horizontal Rule (Minimal 3 strip/bintang)
+            if (/^[-*_]{3,}$/.test(line)) {
               elements.push(<hr key={`${i}-${j}`} className="my-6 border-t-2 border-slate-200" />);
             }
-
             // Header
-            else if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-black mt-5 mb-2 opacity-90">{parseInline(line.slice(4))}</h3>);
-            else if (line.startsWith('## ')) elements.push(<h2 key={`${i}-${j}`} className="text-xl font-black mt-6 mb-3 pb-2 border-b border-current opacity-80">{parseInline(line.slice(3))}</h2>);
-            else if (line.startsWith('# ')) elements.push(<h1 key={`${i}-${j}`} className="text-2xl font-black mt-6 mb-4">{parseInline(line.slice(2))}</h1>);
+            else if (line.startsWith('### ')) elements.push(<h3 key={`${i}-${j}`} className="text-lg font-bold mt-5 mb-2 opacity-90">{parseInline(line.slice(4))}</h3>);
+            else if (line.startsWith('## ')) elements.push(<h2 key={`${i}-${j}`} className="text-xl font-bold mt-6 mb-3 pb-2 border-b border-current opacity-80">{parseInline(line.slice(3))}</h2>);
+            else if (line.startsWith('# ')) elements.push(<h1 key={`${i}-${j}`} className="text-2xl font-bold mt-6 mb-4">{parseInline(line.slice(2))}</h1>);
 
-            // [UPDATE] Blockquote (> Teks)
-            // Sekarang support '>' tanpa spasi juga (misal: >Text)
+            // Blockquote
             else if (line.startsWith('>')) {
-              // Hapus tanda '>' di awal dan spasi opsional setelahnya
               const content = line.replace(/^>\s?/, '');
               elements.push(
                 <blockquote key={`${i}-${j}`} className="border-l-4 border-blue-400 pl-4 py-2 my-4 bg-blue-50/50 rounded-r-lg italic text-slate-600">
@@ -215,7 +209,6 @@ const SimpleMarkdown = ({ text }) => {
                 </blockquote>
               );
             }
-
             // List
             else if (line.startsWith('- ') || line.startsWith('* ')) elements.push(
               <div key={`${i}-${j}`} className="flex gap-3 ml-1 mb-2 items-start">
@@ -223,8 +216,7 @@ const SimpleMarkdown = ({ text }) => {
                 <span className="leading-relaxed">{parseInline(line.slice(2))}</span>
               </div>
             );
-
-            // Default Text
+            // Paragraf Biasa
             else elements.push(<div key={`${i}-${j}`} className="leading-relaxed mb-2">{parseInline(line)}</div>);
           }
         }
@@ -1309,15 +1301,29 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
         </div>
 
         <div className="p-4 bg-white border-t border-slate-100">
-          <div className="flex gap-2">
-            <input
+          <div className="flex gap-2 items-end">
+            {/* GANTI INPUT JADI TEXTAREA */}
+            <textarea
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSend()}
+              onKeyDown={e => {
+                // Enter = Kirim, Shift+Enter = Baris Baru
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Tanya apa aja..."
-              className="flex-1 bg-slate-100 border-2 border-transparent focus:bg-white focus:border-blue-500 rounded-xl px-4 py-3 text-slate-800 outline-none transition-all font-bold placeholder:text-slate-400"
+              rows={1}
+              className="flex-1 bg-slate-100 border-2 border-transparent focus:bg-white focus:border-blue-500 rounded-xl px-4 py-3 text-slate-800 outline-none transition-all font-bold placeholder:text-slate-400 resize-none min-h-[48px] max-h-[120px]"
+              style={{ height: 'auto', overflow: 'hidden' }}
+              // Auto-resize height script simpel
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
             />
-            <button onClick={handleSend} disabled={loading} className="p-3 bg-blue-600 rounded-xl hover:bg-blue-500 transition-colors text-white shadow-lg shadow-blue-200 active:scale-95 transform">
+            <button onClick={handleSend} disabled={loading} className="p-3 bg-blue-600 rounded-xl hover:bg-blue-500 transition-colors text-white shadow-lg shadow-blue-200 active:scale-95 transform h-[48px] w-[48px] flex items-center justify-center">
               <ArrowRight strokeWidth={3} />
             </button>
           </div>
