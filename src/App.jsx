@@ -231,6 +231,33 @@ const SimpleMarkdown = ({ text }) => {
   );
 };
 
+// --- HELPER: CONTEXT AWARENESS (URUTAN MATERI) ---
+const getCurriculumContext = (course, currentLessonId) => {
+  if (!course || !course.modules) return null;
+
+  // 1. Ratakan (Flatten) semua lesson menjadi satu list urut
+  let allLessons = [];
+  course.modules.forEach(mod => {
+    mod.lessons.forEach(lesson => {
+      allLessons.push(lesson.title);
+    });
+  });
+
+  // 2. Cari posisi lesson saat ini
+  const currentIndex = course.modules
+    .flatMap(m => m.lessons)
+    .findIndex(l => l.id === currentLessonId);
+
+  if (currentIndex === -1) return null;
+
+  // 3. Pisahkan Masa Lalu, Sekarang, dan Masa Depan
+  const previousTopics = allLessons.slice(0, currentIndex).join(', ');
+  const currentTopic = allLessons[currentIndex];
+  const futureTopics = allLessons.slice(currentIndex + 1).join(', ');
+
+  return { previousTopics, currentTopic, futureTopics };
+};
+
 // --- SMART AI SERVICES (MULTI-PROVIDER FALLBACK) ---
 
 const fetchGemini = async (model, prompt) => {
@@ -308,13 +335,25 @@ const generateLessonTheory = async (title, courseTitle, description) => {
   return await smartAIFetch(prompt);
 };
 
-// 2. Generate Kuis Berdasarkan Teori Tadi
-const generateLessonQuiz = async (theoryContent, isProgramming) => {
+// 2. Generate Kuis Berdasarkan Teori Tadi, [UPDATED] Generate Kuis dengan Konteks Kurikulum & Tingkat Kesulitan
+const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
+  // Susun instruksi konteks (jika ada)
+  let contextInstruction = "";
+  if (context) {
+    contextInstruction = `
+    ATURAN KURIKULUM (STRICT):
+    1. Materi yang SUDAH dipelajari user: [${context.previousTopics}]. Boleh digunakan sebagai pendukung.
+    2. Materi SAAT INI: "${context.currentTopic}". WAJIB menjadi fokus utama soal.
+    3. Materi MASA DEPAN (BELUM BELAJAR): [${context.futureTopics}]. DILARANG KERAS menggunakan konsep/library dari sini.
+    `;
+  }
+
   const prompt = `
-    Role: Pembuat Soal Ujian Kritis & Teliti (Gaya Tentor Ruangguru/Zenius).
+    Role: Guru Coding untuk Pemula yang Sangat Pengertian.
+    Tugas: Buat soal ujian BERDASARKAN materi berikut.
     
-    Tugas:
-    Buat soal ujian BERDASARKAN materi berikut.
+    ${contextInstruction}
+
     Materi Referensi:
     """
     ${theoryContent}
@@ -322,31 +361,24 @@ const generateLessonQuiz = async (theoryContent, isProgramming) => {
 
     Instruksi Output:
     1. Buat "multiple_choice": Array berisi 5 soal pilihan ganda.
-    2. UNTUK SETIAP SOAL, buat field "feedback" berupa Array string [Respon A, Respon B, Respon C, Respon D].
-       - Jika opsi itu BENAR: Beri apresiasi seru (Contoh: "Yoi bener banget! 🥳", "Mantap jiwa!", dll) lalu jelaskan kenapa itu benar.
-       - Jika opsi itu SALAH: Jelaskan secara spesifik kenapa OPSI TERSEBUT salah/kurang tepat, lalu beritahu konsep yang benar (Gaya mengajar ramah, jangan memarahi).
+    2. UNTUK SETIAP SOAL, buat field "feedback" (Array string respon A,B,C,D).
     
-    ${isProgramming ? `3. Buat "coding_challenge" (Essay).` : ``}
+    ${isProgramming ? `
+    3. Buat "coding_challenge" (Essay) dengan SYARAT KHUSUS:
+       - TINGKAT KESULITAN: SANGAT MUDAH / PEMULA.
+       - HANYA minta user menulis kode yang berkaitan LANGSUNG dengan materi "${context?.currentTopic || 'ini'}".
+       - JANGAN menyuruh import library (seperti math, random, dll) KECUALI materi ini memang membahas library tersebut.
+       - Contoh yang BENAR: Jika materi "For Loop", minta user print angka 1 sampai 5.
+       - Contoh yang SALAH: Jika materi "For Loop", jangan minta user buat algoritma sorting atau import numpy.
+    ` : ``}
     
     Format JSON MURNI (Tanpa markdown code block):
     {
-      "multiple_choice": [
-        { 
-          "question": "Pertanyaan...", 
-          "options": ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"], 
-          "correctAnswer": 0, 
-          "feedback": [
-             "Wah bener banget! Karena...", 
-             "Ups, kurang tepat. Opsi ini salah karena...", 
-             "Kurang pas kawan. Opsi ini sebenarnya...", 
-             "Salah. Yang benar itu..."
-          ] 
-        }
-      ]${isProgramming ? `,
-      "coding_challenge": {
-         "question": "Instruksi soal koding...",
+      "multiple_choice": [ ... ],
+      ${isProgramming ? `"coding_challenge": {
+         "question": "Instruksi soal koding yang simpel...",
          "starter_code": "# Tulis kodemu disini",
-         "solution_keyword": "keyword"
+         "solution_keyword": "keyword jawaban"
       }` : ``}
     }
   `;
@@ -1618,7 +1650,8 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
       if (!theoryText) throw new Error("Gagal generate materi.");
 
       setLoadingStatus("Meracik soal...");
-      const quizData = await generateLessonQuiz(theoryText, isProgramming);
+      const context = getCurriculumContext(activeCourse, lesson.id);
+      const quizData = await generateLessonQuiz(theoryText, isProgramming, context);
 
       if (!quizData || !quizData.multiple_choice) throw new Error("Gagal generate soal.");
 
@@ -2702,7 +2735,7 @@ export default function App() {
         />
 
         <ProtocolSelectModal isOpen={showProtocolModal} onClose={() => setShowProtocolModal(false)} activeCourseId={activeCourseId} onSelectCourse={setActiveCourseId} />
-        {activeLesson && <CyberLessonModal lesson={activeLesson} courseTitle={activeCourse.title} onClose={() => { setActiveLesson(null); setShowChat(false); }} onComplete={handleLessonComplete} onOpenChat={() => setShowChat(true)} isProgramming={activeCourse.isProgramming} />}
+        {activeLesson && <CyberLessonModal lesson={activeLesson} courseTitle={activeCourse.title} onClose={() => { setActiveLesson(null); setShowChat(false); }} onComplete={handleLessonComplete} onOpenChat={() => setShowChat(true)} isProgramming={activeCourse.isProgramming} activeCourse={activeCourse} />}
         <CodeLabModal isOpen={showCodeLab} onClose={() => setShowCodeLab(false)} activeCourse={activeCourse} />
         <ChatDrawer isOpen={showChat} onClose={() => setShowChat(false)} topic={activeLesson ? activeLesson.title : ''} />
         {showQuestModal && activeQuest && <QuestSolverModal quest={activeQuest} onClose={() => setShowQuestModal(false)} onComplete={handleQuestComplete} />}

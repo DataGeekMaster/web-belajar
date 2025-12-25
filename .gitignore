@@ -12,10 +12,13 @@ dist
 dist-ssr
 *.local
 
-#di src/old_app tidak perlu diikutkan
+# Random files
+prompt.txt
 src/old_app.jsx
-src/data/data_extractor_toJson.py
 
+# Data files
+src/data/data_extractor_toJson.py
+src/data/*.csv
 
 # Editor directories and files
 .vscode/*
