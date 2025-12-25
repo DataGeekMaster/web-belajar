@@ -1893,6 +1893,940 @@ export const COURSES_DATA = [
         ]
     },
     {
+        id: "matkul_metstat",
+        title: "METODE STATISTIKA",
+        description: "Dari nol sampai jago analisis data & machine learning.",
+        isProgramming: false,
+        color: "green",
+        icon: <Terminal size={24} />,
+        codeConfig: {
+            language: "R",
+            defaultCode: "print('Halo, mari belajar Statistik!')",
+            placeholder: "Ketik rumus statistik di sini..."
+        },
+        modules: [
+            {
+                id: "mod_metstat_konsep_dasar_statistika",
+                title: "Konsep Dasar Statistika",
+                lessons: [
+                    {
+                        id: "les_metstat_statistik_deskripsi",
+                        title: "Statistik Deskripsi",
+                        description: "Kita mulai dari cara merapikan data mentah agar enak dilihat dan dipahami."
+                    },
+                    {
+                        id: "les_metstat_statistik_inferensia",
+                        title: "Statistik Inferensia",
+                        description: "Setelah data rapi, saatnya belajar menarik kesimpulan besar dari sampel kecil."
+                    },
+                    {
+                        id: "les_metstat_populasi",
+                        title: "Populasi",
+                        description: "Memahami objek besar yang ingin kita teliti secara keseluruhan."
+                    },
+                    {
+                        id: "les_metstat_sampel",
+                        title: "Sampel",
+                        description: "Karena populasi terlalu besar, kita ambil sebagian kecilnya saja untuk diuji."
+                    },
+                    {
+                        id: "les_metstat_parameter",
+                        title: "Parameter",
+                        description: "Istilah untuk angka-angka 'sebenarnya' yang ada di dalam populasi."
+                    },
+                    {
+                        id: "les_metstat_statistik_ukuran_sampel",
+                        title: "Statistik (Ukuran Sampel)",
+                        description: "Kalau parameter milik populasi, maka 'statistik' adalah angka milik sampel."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_ukuran_pemusatan_data",
+                title: "Ukuran Pemusatan Data",
+                lessons: [
+                    {
+                        id: "les_metstat_rata_rata_mean",
+                        title: "Rata-rata (Mean)",
+                        description: "Teknik paling dasar untuk mencari satu angka yang mewakili seluruh data."
+                    },
+                    {
+                        id: "les_metstat_median",
+                        title: "Median",
+                        description: "Kalau ada data pencilan yang ekstrem, nilai tengah ini lebih adil daripada Mean."
+                    },
+                    {
+                        id: "les_metstat_modus",
+                        title: "Modus",
+                        description: "Mencari data yang paling eksis atau paling sering muncul."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_penyajian_data_tabel",
+                title: "Penyajian Data (Tabel)",
+                lessons: [
+                    {
+                        id: "les_metstat_tabel_baris_kolom",
+                        title: "Tabel Baris Kolom",
+                        description: "Cara klasik menyusun data agar rapi dan mudah dibaca sekilas."
+                    },
+                    {
+                        id: "les_metstat_tabel_kontingensi",
+                        title: "Tabel Kontingensi",
+                        description: "Melihat hubungan dua variabel berbeda dalam satu tabel silang."
+                    },
+                    {
+                        id: "les_metstat_distribusi_frekuensi_relatif",
+                        title: "Distribusi Frekuensi Relatif",
+                        description: "Mengubah angka jumlah menjadi persentase agar proporsinya terlihat."
+                    },
+                    {
+                        id: "les_metstat_distribusi_frekuensi_kumulatif",
+                        title: "Distribusi Frekuensi Kumulatif",
+                        description: "Menghitung total data secara bertahap dari kelas ke kelas."
+                    },
+                    {
+                        id: "les_metstat_distribusi_frekuensi_terbuka",
+                        title: "Distribusi Frekuensi Terbuka",
+                        description: "Bagaimana menangani data yang ujungnya 'lebih dari' atau 'kurang dari'."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_penyajian_data_diagram",
+                title: "Penyajian Data (Diagram)",
+                lessons: [
+                    {
+                        id: "les_metstat_histogram",
+                        title: "Histogram",
+                        description: "Visualisasi wajib anak data untuk melihat bentuk sebaran data kontinu."
+                    },
+                    {
+                        id: "les_metstat_diagram_garis",
+                        title: "Diagram Garis",
+                        description: "Paling cocok buat melihat tren perubahan data dari waktu ke waktu."
+                    },
+                    {
+                        id: "les_metstat_diagram_lingkaran",
+                        title: "Diagram Lingkaran",
+                        description: "Melihat porsi atau pangsa pasar dalam bentuk potongan kue."
+                    },
+                    {
+                        id: "les_metstat_diagram_lambang",
+                        title: "Diagram Lambang",
+                        description: "Penyajian data unik menggunakan ikon atau simbol visual."
+                    },
+                    {
+                        id: "les_metstat_diagram_peta",
+                        title: "Diagram Peta",
+                        description: "Memetakan data statistik langsung ke lokasi geografis wilayah."
+                    },
+                    {
+                        id: "les_metstat_diagram_pencar",
+                        title: "Diagram Pencar",
+                        description: "Mendeteksi apakah dua variabel punya hubungan mesra atau tidak."
+                    },
+                    {
+                        id: "les_metstat_diagram_dahan_daun_stem_and_leaf",
+                        title: "Diagram Dahan Daun",
+                        description: "Teknik jadul tapi ampuh untuk melihat detail nilai data sekaligus sebarannya."
+                    },
+                    {
+                        id: "les_metstat_diagram_kotak_garis",
+                        title: "Diagram Kotak Garis",
+                        description: "Sering disebut Boxplot, jagonya mendeteksi outlier dalam data."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_ukuran_letak_data",
+                title: "Ukuran Letak Data",
+                lessons: [
+                    {
+                        id: "les_metstat_kuartil",
+                        title: "Kuartil",
+                        description: "Membagi data urut menjadi 4 bagian sama besar."
+                    },
+                    {
+                        id: "les_metstat_desil",
+                        title: "Desil",
+                        description: "Membagi data menjadi 10 bagian untuk analisis yang lebih rinci."
+                    },
+                    {
+                        id: "les_metstat_persentil",
+                        title: "Persentil",
+                        description: "Membagi data jadi 100 bagian, sering dipakai buat ranking nilai ujian."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_ukuran_penyebaran_data",
+                title: "Ukuran Penyebaran Data",
+                lessons: [
+                    {
+                        id: "les_metstat_range_rentang",
+                        title: "Range (Rentang)",
+                        description: "Mengukur jarak antara data terbesar dan terkecil secara simpel."
+                    },
+                    {
+                        id: "les_metstat_simpangan_kuartil",
+                        title: "Simpangan Kuartil",
+                        description: "Fokus melihat penyebaran di area tengah data, mengabaikan ekstrem."
+                    },
+                    {
+                        id: "les_metstat_simpangan_rata_rata",
+                        title: "Simpangan Rata-rata",
+                        description: "Rata-rata jarak setiap data terhadap titik pusatnya."
+                    },
+                    {
+                        id: "les_metstat_standar_deviasi_simpangan_baku",
+                        title: "Standar Deviasi",
+                        description: "Indikator paling populer untuk menilai seberapa stabil datamu."
+                    },
+                    {
+                        id: "les_metstat_variansi_ragam",
+                        title: "Variansi (Ragam)",
+                        description: "Kuadrat dari standar deviasi, penting untuk perhitungan statistik lanjut."
+                    },
+                    {
+                        id: "les_metstat_koefisien_keragaman",
+                        title: "Koefisien Keragaman",
+                        description: "Membandingkan variasi dua data yang punya satuan berbeda."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_karakteristik_distribusi",
+                title: "Karakteristik Distribusi",
+                lessons: [
+                    {
+                        id: "les_metstat_box_plot",
+                        title: "Box Plot",
+                        description: "Visualisasi ringkas 5 angka penting dalam satu gambar."
+                    },
+                    {
+                        id: "les_metstat_skewness_kemiringan",
+                        title: "Skewness",
+                        description: "Melihat apakah kurva datamu condong ke kiri atau ke kanan."
+                    },
+                    {
+                        id: "les_metstat_kurtosis_keruncingan",
+                        title: "Kurtosis",
+                        description: "Mengukur apakah puncak datamu tajam (runcing) atau landai."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_dasar_dasar_peubah_acak",
+                title: "Dasar-Dasar Peubah Acak",
+                lessons: [
+                    {
+                        id: "les_metstat_pengertian_peubah_acak",
+                        title: "Pengertian Peubah Acak",
+                        description: "Jembatan matematika untuk mengubah kejadian acak menjadi angka."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_jenis_peubah_acak",
+                title: "Jenis Peubah Acak",
+                lessons: [
+                    {
+                        id: "les_metstat_distribusi_peluang_diskret",
+                        title: "Distribusi Peluang Diskret",
+                        description: "Untuk data yang bisa dihitung jari, seperti jumlah anak atau dadu."
+                    },
+                    {
+                        id: "les_metstat_distribusi_peluang_kontinu",
+                        title: "Distribusi Peluang Kontinu",
+                        description: "Untuk data ukur yang bersambung, seperti tinggi badan atau waktu."
+                    },
+                    {
+                        id: "les_metstat_distribusi_peluang_bersama",
+                        title: "Distribusi Peluang Bersama",
+                        description: "Apa jadinya kalau dua kejadian acak terjadi berbarengan?"
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_ekspektasi_matematik",
+                title: "Ekspektasi Matematik",
+                lessons: [
+                    {
+                        id: "les_metstat_nilai_tengah_peubah_acak",
+                        title: "Nilai Tengah Peubah Acak",
+                        description: "Menghitung harapan rata-rata dalam jangka panjang."
+                    },
+                    {
+                        id: "les_metstat_ragam_suatu_peubah_acak",
+                        title: "Ragam Suatu Peubah Acak",
+                        description: "Mengukur seberapa jauh hasil acak meleset dari harapan."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_sifat_ekspektasi",
+                title: "Sifat Ekspektasi",
+                lessons: [
+                    {
+                        id: "les_metstat_sifat_sifat_nilai_tengah",
+                        title: "Sifat-sifat Nilai Tengah",
+                        description: "Hukum matematika yang mempermudah perhitungan nilai harapan."
+                    },
+                    {
+                        id: "les_metstat_sifat_sifat_ragam",
+                        title: "Sifat-sifat Ragam",
+                        description: "Aturan main dalam mengutak-atik variansi variabel acak."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_distribusi_peluang_khusus",
+                title: "Distribusi Peluang Khusus",
+                lessons: [
+                    {
+                        id: "les_metstat_distribusi_seragam",
+                        title: "Distribusi Seragam",
+                        description: "Kondisi di mana semua kejadian punya peluang yang sama persis."
+                    },
+                    {
+                        id: "les_metstat_distribusi_bernoulli",
+                        title: "Distribusi Bernoulli",
+                        description: "Eksperimen 'sekali coba' dengan hasil Sukses atau Gagal saja."
+                    },
+                    {
+                        id: "les_metstat_distribusi_binomial",
+                        title: "Distribusi Binomial",
+                        description: "Pengembangan Bernoulli: Menghitung sukses dalam 'n' kali percobaan."
+                    },
+                    {
+                        id: "les_metstat_distribusi_multinomial",
+                        title: "Distribusi Multinomial",
+                        description: "Kalau hasilnya lebih dari dua opsi, kita pakai rumus ini."
+                    },
+                    {
+                        id: "les_metstat_distribusi_hipergeometrik",
+                        title: "Distribusi Hipergeometrik",
+                        description: "Peluang pengambilan sampel tanpa pengembalian barang."
+                    },
+                    {
+                        id: "les_metstat_sebaran_binomial_negatif",
+                        title: "Sebaran Binomial Negatif",
+                        description: "Berapa kali harus mencoba sampai sukses ke-k kali tercapai?"
+                    },
+                    {
+                        id: "les_metstat_distribusi_geometrik",
+                        title: "Distribusi Geometrik",
+                        description: "Menghitung percobaan pertama kali sukses terjadi."
+                    },
+                    {
+                        id: "les_metstat_distribusi_poisson",
+                        title: "Distribusi Poisson",
+                        description: "Menghitung kejadian langka dalam selang waktu tertentu."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_distribusi_normal",
+                title: "Distribusi Normal",
+                lessons: [
+                    {
+                        id: "les_metstat_kurva_distribusi_normal",
+                        title: "Kurva Distribusi Normal",
+                        description: "Mengenal 'Kurva Lonceng', primadona dalam dunia statistik."
+                    },
+                    {
+                        id: "les_metstat_luas_daerah_di_bawah_kurva_normal",
+                        title: "Luas Daerah Kurva Normal",
+                        description: "Cara membaca tabel Z untuk menghitung probabilitas."
+                    },
+                    {
+                        id: "les_metstat_penerapan_distribusi_normal",
+                        title: "Penerapan Distribusi Normal",
+                        description: "Studi kasus nyata menggunakan asumsi data normal."
+                    },
+                    {
+                        id: "les_metstat_hampiran_normal_terhadap_sebaran_binomial",
+                        title: "Hampiran Normal ke Binomial",
+                        description: "Trik pakai kurva normal untuk data diskret yang jumlahnya besar."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_distribusi_sampling",
+                title: "Distribusi Sampling",
+                lessons: [
+                    {
+                        id: "les_metstat_definisi_distribusi_sampling",
+                        title: "Definisi Distribusi Sampling",
+                        description: "Apa jadinya kalau kita ambil banyak sampel dan merata-ratakannya?"
+                    },
+                    {
+                        id: "les_metstat_distribusi_sampling_nilai_tengah",
+                        title: "Sampling Nilai Tengah",
+                        description: "Teori dasar yang menjamin rata-rata sampel itu bisa dipercaya."
+                    },
+                    {
+                        id: "les_metstat_distribusi_t",
+                        title: "Distribusi t",
+                        description: "Alternatif kurva normal saat sampelmu jumlahnya sedikit."
+                    },
+                    {
+                        id: "les_metstat_distribusi_sampling_bagi_beda_dua_nilai_tengah",
+                        title: "Beda Dua Nilai Tengah",
+                        description: "Membandingkan dua kelompok data lewat sampelnya."
+                    },
+                    {
+                        id: "les_metstat_distribusi_proporsi",
+                        title: "Distribusi Proporsi",
+                        description: "Analisis peluang untuk data persentase atau proporsi."
+                    },
+                    {
+                        id: "les_metstat_distribusi_beda_proporsi",
+                        title: "Distribusi Beda Proporsi",
+                        description: "Apakah proporsi kelompok A beda signifikan dengan kelompok B?"
+                    },
+                    {
+                        id: "les_metstat_distribusi_simpangan_baku",
+                        title: "Distribusi Simpangan Baku",
+                        description: "Melihat pola penyebaran dari variasi sampel itu sendiri."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_teori_estimasi_pendugaan",
+                title: "Teori Estimasi (Pendugaan)",
+                lessons: [
+                    {
+                        id: "les_metstat_inferensia_statistika",
+                        title: "Inferensia Statistika",
+                        description: "Seni menebak fakta populasi bermodal data sampel terbatas."
+                    },
+                    {
+                        id: "les_metstat_metode_pendugaan_klasik",
+                        title: "Metode Pendugaan Klasik",
+                        description: "Teknik estimasi titik dan selang kepercayaan yang umum dipakai."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_estimasi_satu_sampel",
+                title: "Estimasi Satu Sampel",
+                lessons: [
+                    {
+                        id: "les_metstat_pendugaan_nilai_tengah",
+                        title: "Pendugaan Nilai Tengah",
+                        description: "Menebak rata-rata populasi dengan rentang keyakinan tertentu."
+                    },
+                    {
+                        id: "les_metstat_pendugaan_proporsi",
+                        title: "Pendugaan Proporsi",
+                        description: "Menebak persentase populasi (misal: elektabilitas) dari survei."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_estimasi_dua_sampel",
+                title: "Estimasi Dua Sampel",
+                lessons: [
+                    {
+                        id: "les_metstat_pendugaan_beda_dua_nilai_tengah_populasi",
+                        title: "Beda Dua Rata-rata",
+                        description: "Mengestimasi selisih nilai antara dua kelompok berbeda."
+                    },
+                    {
+                        id: "les_metstat_pendugaan_selisih_dua_proporsi",
+                        title: "Selisih Dua Proporsi",
+                        description: "Mengukur jarak persentase antara dua populasi."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_estimasi_varians",
+                title: "Estimasi Varians",
+                lessons: [
+                    {
+                        id: "les_metstat_pendugaan_ragam",
+                        title: "Pendugaan Ragam",
+                        description: "Menaksir seberapa bervariasi data populasi sebenarnya."
+                    },
+                    {
+                        id: "les_metstat_pendugaan_rasio_dua_ragam",
+                        title: "Rasio Dua Ragam",
+                        description: "Membandingkan konsistensi data antara dua kelompok."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_konsep_uji_hipotesis",
+                title: "Konsep Uji Hipotesis",
+                lessons: [
+                    {
+                        id: "les_metstat_hipotesis_statistik",
+                        title: "Hipotesis Statistik",
+                        description: "Membuat dugaan sementara yang bisa diuji kebenarannya."
+                    },
+                    {
+                        id: "les_metstat_pengujian_hipotesis_statistik",
+                        title: "Prosedur Pengujian",
+                        description: "Langkah-langkah resmi untuk menerima atau menolak dugaanmu."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_jenis_pengujian_hipotesis",
+                title: "Jenis Pengujian Hipotesis",
+                lessons: [
+                    {
+                        id: "les_metstat_uji_satu_arah",
+                        title: "Uji Satu Arah",
+                        description: "Menguji apakah nilai 'lebih besar' atau 'lebih kecil' dari target."
+                    },
+                    {
+                        id: "les_metstat_uji_dua_arah",
+                        title: "Uji Dua Arah",
+                        description: "Menguji apakah nilai sekadar 'berbeda' (tidak sama) dari target."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_aplikasi_uji_hipotesis",
+                title: "Aplikasi Uji Hipotesis",
+                lessons: [
+                    {
+                        id: "les_metstat_uji_mengenai_nilai_tengah",
+                        title: "Uji Rata-rata",
+                        description: "Pembuktian apakah rata-rata data sesuai klaim atau tidak."
+                    },
+                    {
+                        id: "les_metstat_pengujian_mengenai_ragam",
+                        title: "Uji Ragam",
+                        description: "Membuktikan konsistensi atau variasi suatu data."
+                    },
+                    {
+                        id: "les_metstat_uji_mengenai_proporsi",
+                        title: "Uji Proporsi",
+                        description: "Memverifikasi klaim persentase (misal: klaim pasar)."
+                    },
+                    {
+                        id: "les_metstat_pengujian_selisih_antara_dua_proporsi",
+                        title: "Uji Selisih Proporsi",
+                        description: "Memastikan apakah perbedaan dua persentase itu nyata atau kebetulan."
+                    }
+                ]
+            },
+            {
+                id: "mod_metstat_analisis_hubungan_variabel",
+                title: "Analisis Hubungan Variabel",
+                lessons: [
+                    {
+                        id: "les_metstat_pengantar_regresi_linier_sederhana",
+                        title: "Pengantar Regresi",
+                        description: "Belajar meramal masa depan menggunakan pola data masa lalu."
+                    },
+                    {
+                        id: "les_metstat_model_regresi_linier_sederhana",
+                        title: "Model Regresi Linier",
+                        description: "Membangun rumus matematika Y = a + bX dari datamu."
+                    },
+                    {
+                        id: "les_metstat_metode_kuadrat_terkecil_least_square",
+                        title: "Metode Least Square",
+                        description: "Teknik mencari garis prediksi yang paling akurat (error terkecil)."
+                    },
+                    {
+                        id: "les_metstat_model_hasil_estimasi",
+                        title: "Model Hasil Estimasi",
+                        description: "Membaca dan mengartikan persamaan regresi yang sudah jadi."
+                    },
+                    {
+                        id: "les_metstat_sifat_sifat_penaksir_kuadrat_terkecil",
+                        title: "Sifat Penaksir",
+                        description: "Syarat-syarat agar model prediksimu valid (BLUE)."
+                    },
+                    {
+                        id: "les_metstat_inferensi_terhadap_koefisien_regresi",
+                        title: "Inferensi Koefisien",
+                        description: "Menguji apakah variabel X benar-benar berpengaruh terhadap Y."
+                    },
+                    {
+                        id: "les_metstat_prediksi_dengan_model_regresi",
+                        title: "Prediksi",
+                        description: "Saatnya menggunakan rumusmu untuk meramal nilai data baru."
+                    },
+                    {
+                        id: "les_metstat_pemilihan_model_regresi",
+                        title: "Pemilihan Model",
+                        description: "Memilih model terbaik jika ada banyak calon variabel."
+                    },
+                    {
+                        id: "les_metstat_pendekatan_analisis_varians_anova",
+                        title: "Pendekatan ANOVA",
+                        description: "Menggunakan analisis varians untuk menguji kelayakan model regresi."
+                    },
+                    {
+                        id: "les_metstat_uji_linearitas_regresi",
+                        title: "Uji Linearitas",
+                        description: "Memastikan hubungan data memang lurus (linear), bukan melengkung."
+                    },
+                    {
+                        id: "les_metstat_analisis_korelasi",
+                        title: "Analisis Korelasi",
+                        description: "Mengukur seberapa erat hubungan mesra antara dua variabel."
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        id: "matkul_kalkulus1",
+        title: "Kalkulus I",
+        description: "Kursus lengkap Kalkulus I dari dasar hingga mahir.",
+        isProgramming: false,
+        color: "yellow",
+        icon: <Terminal size={24} />,
+        codeConfig: {
+            language: "R",
+            defaultCode: "print('Halo, mari belajar Statistik!')",
+            placeholder: "Ketik rumus statistik di sini..."
+        },
+        modules: [
+            {
+                id: "mod_kalkulus1_pengantar_dasar_sistem_bilangan",
+                title: "Pengantar & Dasar Sistem Bilangan",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_sejarah_penemuan_bilangan",
+                        title: "Sejarah Penemuan Bilangan",
+                        description: "Dari berhitung jari hingga konsep abstrak, mari telusuri asal-usul bahasa alam semesta ini."
+                    },
+                    {
+                        id: "les_kalkulus1_operasi_lapangan",
+                        title: "Operasi Lapangan",
+                        description: "Bukan sekadar tambah-kurang, kita bedah struktur 'lapangan' yang mengatur aljabar modern."
+                    },
+                    {
+                        id: "les_kalkulus1_sifat_lapangan",
+                        title: "Sifat Lapangan",
+                        description: "Komutatif, Asosiatif, Distributif. Terdengar klise? Tunggu sampai kamu lihat peran vitalnya."
+                    },
+                    {
+                        id: "les_kalkulus1_selang_garis_bilangan",
+                        title: "Selang Garis Bilangan",
+                        description: "Saatnya memetakan angka ke dalam visual garis agar rentang nilai lebih mudah dibayangkan."
+                    },
+                    {
+                        id: "les_kalkulus1_sifat_urutan",
+                        title: "Sifat Urutan",
+                        description: "Siapa lebih besar? Siapa lebih kecil? Logika ketaksamaan dimulai dari sini."
+                    },
+                    {
+                        id: "les_kalkulus1_akar_persamaan",
+                        title: "Akar Persamaan",
+                        description: "Mencari nilai 'x' yang misterius, kunci utama dalam memecahkan teka-teki aljabar."
+                    },
+                    {
+                        id: "les_kalkulus1_nilai_mutlak",
+                        title: "Nilai Mutlak",
+                        description: "Jarak itu selalu positif. Konsep sederhana yang vital untuk mengukur error dan selisih."
+                    },
+                    {
+                        id: "les_kalkulus1_himpunan_penyelesaian",
+                        title: "Himpunan Penyelesaian",
+                        description: "Merangkum semua jawaban yang mungkin ke dalam satu wadah himpunan yang rapi."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_fungsi_real_visualisasi",
+                title: "Fungsi Real & Visualisasi",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_konsep_fungsi",
+                        title: "Konsep Fungsi",
+                        description: "Ibarat mesin: Masukkan bahan (input), proses, lalu keluar produk (output). Inilah inti Kalkulus."
+                    },
+                    {
+                        id: "les_kalkulus1_grafik_fungsi",
+                        title: "Grafik Fungsi",
+                        description: "Satu gambar bernilai seribu angka. Kita terjemahkan rumus rumit menjadi kurva visual."
+                    },
+                    {
+                        id: "les_kalkulus1_domain_fungsi",
+                        title: "Domain Fungsi",
+                        description: "Menentukan daerah asal: Mana nilai yang boleh masuk, mana yang dilarang keras?"
+                    },
+                    {
+                        id: "les_kalkulus1_range_fungsi",
+                        title: "Range Fungsi",
+                        description: "Jika Domain adalah start, maka Range adalah garis finish. Seberapa jauh fungsi bisa menjelajah?"
+                    },
+                    {
+                        id: "les_kalkulus1_operasi_fungsi",
+                        title: "Operasi Fungsi",
+                        description: "Fungsi juga bisa ditambah, dikali, bahkan dikomposisikan untuk membentuk monster baru."
+                    },
+                    {
+                        id: "les_kalkulus1_fungsi_polinom",
+                        title: "Fungsi Polinom",
+                        description: "Keluarga fungsi paling bersahabat, dari garis lurus linear hingga lengkungan parabola."
+                    },
+                    {
+                        id: "les_kalkulus1_kurva_fungsi",
+                        title: "Kurva Fungsi",
+                        description: "Menganalisis lekukan dan perilaku grafik secara lebih mendetail."
+                    },
+                    {
+                        id: "les_kalkulus1_transformasi_kurva_fungsi",
+                        title: "Transformasi Kurva",
+                        description: "Geser, cerminkan, atau perbesar grafik tanpa harus menghitung ulang dari nol."
+                    },
+                    {
+                        id: "les_kalkulus1_fungsi_transenden",
+                        title: "Fungsi Transenden",
+                        description: "Mengenal 'spesies' fungsi non-aljabar: Trigonometri, Logaritma, dan Eksponensial."
+                    },
+                    {
+                        id: "les_kalkulus1_kurva_fungsi_transenden",
+                        title: "Kurva Transenden",
+                        description: "Melihat indahnya gelombang sin/cos dan curamnya grafik eksponensial secara visual."
+                    },
+                    {
+                        id: "les_kalkulus1_kombinasi_fungsi",
+                        title: "Kombinasi Fungsi",
+                        description: "Apa jadinya jika Polinom kawin silang dengan Trigonometri? Mari kita racik."
+                    },
+                    {
+                        id: "les_kalkulus1_bentuk_aljabar_kombinasi_fungsi",
+                        title: "Bentuk Aljabar Kombinasi",
+                        description: "Mengurai kembali struktur matematika dari fungsi-fungsi yang sudah digabungkan."
+                    },
+                    {
+                        id: "les_kalkulus1_grafik_kombinasi_fungsi",
+                        title: "Grafik Kombinasi",
+                        description: "Visualisasi akhir dari fungsi kompleks. Saatnya melihat perilaku unik yang muncul."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_limit_kekontinuan_fungsi",
+                title: "Limit & Kekontinuan Fungsi",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_interpretasi_limit",
+                        title: "Interpretasi Limit",
+                        description: "Konsep 'mendekati tapi tak menyentuh'. Pintu gerbang menuju dunia Kalkulus."
+                    },
+                    {
+                        id: "les_kalkulus1_limit_kiri",
+                        title: "Limit Kiri",
+                        description: "Mendekati target dari arah negatif. Apakah jalannya mulus atau terputus?"
+                    },
+                    {
+                        id: "les_kalkulus1_limit_kanan",
+                        title: "Limit Kanan",
+                        description: "Sekarang dari sisi positif. Limit baru ada jika kiri dan kanan sepakat bertemu."
+                    },
+                    {
+                        id: "les_kalkulus1_limit_di_tak_hingga",
+                        title: "Limit di Tak Hingga",
+                        description: "Apa yang terjadi pada fungsi jika kita berjalan sangat jauh ke ujung sumbu X?"
+                    },
+                    {
+                        id: "les_kalkulus1_limit_tak_hingga",
+                        title: "Limit Tak Hingga",
+                        description: "Saat nilai fungsi meledak ke atas tanpa batas. Hati-hati, ada tembok vertikal!"
+                    },
+                    {
+                        id: "les_kalkulus1_asimptot_fungsi",
+                        title: "Asimptot Fungsi",
+                        description: "Garis batas gaib yang terus didekati grafik tapi haram untuk disentuh."
+                    },
+                    {
+                        id: "les_kalkulus1_kontinuitas_fungsi_pada_sebuah_titik",
+                        title: "Kontinuitas di Titik",
+                        description: "Syarat mutlak agar kurva tidak bolong atau patah di tengah jalan."
+                    },
+                    {
+                        id: "les_kalkulus1_kontinuitas_fungsi_di_sebuah_selang",
+                        title: "Kontinuitas Interval",
+                        description: "Memastikan fungsi berjalan mulus tanpa hambatan sepanjang rentang tertentu."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_dasar_aturan_turunan",
+                title: "Dasar & Aturan Turunan",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_interpretasi_turunan_kemiringan_garis_singgung",
+                        title: "Interpretasi Turunan",
+                        description: "Seberapa curam tanjakannya? Turunan adalah alat pengukur kemiringan instan."
+                    },
+                    {
+                        id: "les_kalkulus1_rumus_dasar_turunan",
+                        title: "Rumus Dasar Turunan",
+                        description: "Lupakan limit panjang. Gunakan jalan pintas (rumus sakti) untuk menurunkan fungsi."
+                    },
+                    {
+                        id: "les_kalkulus1_turunan_fungsi_komposisi",
+                        title: "Aturan Rantai (Chain Rule)",
+                        description: "Teknik 'mengupas bawang' untuk menurunkan fungsi di dalam fungsi."
+                    },
+                    {
+                        id: "les_kalkulus1_turunan_orde_tinggi",
+                        title: "Turunan Orde Tinggi",
+                        description: "Menurunkan hasil turunan. Percepatan adalah turunan dari kecepatan, ingat?"
+                    },
+                    {
+                        id: "les_kalkulus1_turunan_fungsi_eksplisit",
+                        title: "Turunan Eksplisit",
+                        description: "Cara standar menurunkan y = f(x) yang sudah biasa kita lihat."
+                    },
+                    {
+                        id: "les_kalkulus1_turunan_fungsi_implisit",
+                        title: "Turunan Implisit",
+                        description: "Saat 'y' bercampur baur dengan 'x', kita butuh trik khusus untuk menurunkannya."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_aplikasi_turunan_fungsi",
+                title: "Aplikasi Turunan Fungsi",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_masalah_nilai_ekstrim",
+                        title: "Masalah Nilai Ekstrim",
+                        description: "Mencari puncak tertinggi (Maksimum) dan lembah terdalam (Minimum). Holy Grail-nya optimasi."
+                    },
+                    {
+                        id: "les_kalkulus1_kemonotonan_fungsi",
+                        title: "Kemonotonan Fungsi",
+                        description: "Kapan grafik naik? Kapan turun? Turunan pertama punya jawabannya."
+                    },
+                    {
+                        id: "les_kalkulus1_kecekungan_fungsi",
+                        title: "Kecekungan Fungsi",
+                        description: "Cekung ke atas atau ke bawah? Turunan kedua yang menjadi detektifnya."
+                    },
+                    {
+                        id: "les_kalkulus1_uji_turunan_i",
+                        title: "Uji Turunan I",
+                        description: "Memastikan apakah titik kritis itu puncak gunung atau dasar jurang."
+                    },
+                    {
+                        id: "les_kalkulus1_uji_turunan_ii",
+                        title: "Uji Turunan II",
+                        description: "Cara alternatif (dan seringkali lebih cepat) untuk menguji jenis titik ekstrem."
+                    },
+                    {
+                        id: "les_kalkulus1_teorema_nilai_rata_rata",
+                        title: "Teorema Nilai Rata-rata",
+                        description: "Jaminan bahwa rata-rata kecepatan pasti pernah tersentuh setidaknya sekali."
+                    },
+                    {
+                        id: "les_kalkulus1_menggambar_grafik_fungsi",
+                        title: "Menggambar Grafik",
+                        description: "Bukan sekadar sketsa, kita gambar anatomi grafik akurat bermodal kalkulus."
+                    },
+                    {
+                        id: "les_kalkulus1_ekspresi_fungsi_dalam_deret_taylor",
+                        title: "Deret Taylor",
+                        description: "Mengubah fungsi rumit menjadi deretan polinom tak hingga yang bisa dihitung."
+                    },
+                    {
+                        id: "les_kalkulus1_deret_maclaurin",
+                        title: "Deret Maclaurin",
+                        description: "Versi spesial dari Taylor yang berpusat di nol. Sangat berguna di Fisika."
+                    },
+                    {
+                        id: "les_kalkulus1_aplikasi_turunan_berbagai_bidang",
+                        title: "Aplikasi Nyata",
+                        description: "Dari Laju Reaksi kimia hingga Marginal Cost ekonomi, turunan ada di mana-mana."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_dasar_integral_teknik_pengintegralan",
+                title: "Dasar Integral & Teknik",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_integral_tentu_sebagai_jumlahan_riemann",
+                        title: "Jumlahan Riemann",
+                        description: "Menghitung luas area lengkung dengan memotongnya jadi persegi panjang tipis."
+                    },
+                    {
+                        id: "les_kalkulus1_sifat_sifat_integral",
+                        title: "Sifat-sifat Integral",
+                        description: "Aturan main yang bikin hidup lebih mudah saat mengutak-atik integral."
+                    },
+                    {
+                        id: "les_kalkulus1_teorema_dasar_integral",
+                        title: "Teorema Dasar Kalkulus",
+                        description: "Momen 'Aha!' yang menyatukan Turunan dan Integral sebagai dua sisi mata uang."
+                    },
+                    {
+                        id: "les_kalkulus1_integral_tak_tentu",
+                        title: "Integral Tak Tentu",
+                        description: "Mencari 'Anti-turunan'. Siapakah fungsi asal sebelum dia diturunkan?"
+                    },
+                    {
+                        id: "les_kalkulus1_metode_pengintegralan",
+                        title: "Metode Substitusi",
+                        description: "Trik 'memisalkan u' untuk menyederhanakan integral yang ruwet."
+                    },
+                    {
+                        id: "les_kalkulus1_teknik_pengintegralan_fungsi_rasional",
+                        title: "Integral Fungsi Rasional",
+                        description: "Memecah pecahan kompleks menjadi bagian-bagian kecil yang mudah diintegralkan."
+                    }
+                ]
+            },
+            {
+                id: "mod_kalkulus1_aplikasi_integral",
+                title: "Aplikasi Integral",
+                lessons: [
+                    {
+                        id: "les_kalkulus1_luas_daerah_di_bawah_kurva_di_atas_sumbu_x",
+                        title: "Luas Area Standar",
+                        description: "Menghitung luas tanah di bawah kurva tapi masih di atas tanah (sumbu X)."
+                    },
+                    {
+                        id: "les_kalkulus1_luas_daerah_di_bawah_kurva_di_bawah_sumbu_x",
+                        title: "Luas Area Bawah",
+                        description: "Bagaimana jika areanya 'tenggelam' di bawah sumbu X? Hati-hati tanda minus!"
+                    },
+                    {
+                        id: "les_kalkulus1_luas_di_antara_dua_kurva",
+                        title: "Luas Antara Dua Kurva",
+                        description: "Menghitung area yang terjepit di tengah-tengah dua grafik berbeda."
+                    },
+                    {
+                        id: "les_kalkulus1_nilai_rata_rata_integral",
+                        title: "Nilai Rata-rata Fungsi",
+                        description: "Cara mencari tinggi rata-rata dari sebuah gelombang yang naik turun."
+                    },
+                    {
+                        id: "les_kalkulus1_panjang_kurva",
+                        title: "Panjang Kurva",
+                        description: "Jika tali grafik direntangkan lurus, seberapa panjangkah dia sebenarnya?"
+                    },
+                    {
+                        id: "les_kalkulus1_momen",
+                        title: "Momen & Pusat Massa",
+                        description: "Fisika bertemu Matematika. Menghitung titik keseimbangan suatu benda."
+                    },
+                    {
+                        id: "les_kalkulus1_titik_massa_plat_tipis",
+                        title: "Titik Berat Plat",
+                        description: "Menentukan di mana kamu harus menaruh jari agar plat tipis ini seimbang sempurna."
+                    }
+                ]
+            }
+        ]
+    },
+    {
         id: "ipas_kelas4",
         title: "IPAS Kelas 4",
         description: "Pelajari konsep dasar IPA dan Matematika yang menyenangkan untuk siswa kelas 4 SD.",
