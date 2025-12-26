@@ -231,7 +231,7 @@ const SimpleMarkdown = ({ text }) => {
   );
 };
 
-// --- HELPER: CONTEXT AWARENESS (URUTAN MATERI) ---
+// --- HELPER: CONTEXT AWARENESS (OPTIMIZED) ---
 const getCurriculumContext = (course, currentLessonId) => {
   if (!course || !course.modules) return null;
 
@@ -244,16 +244,23 @@ const getCurriculumContext = (course, currentLessonId) => {
   });
 
   // 2. Cari posisi lesson saat ini
-  const currentIndex = course.modules
-    .flatMap(m => m.lessons)
-    .findIndex(l => l.id === currentLessonId);
+  const currentIndex = allLessons.findIndex(title =>
+    course.modules.some(m => m.lessons.some(l => l.id === currentLessonId && l.title === title))
+  );
 
   if (currentIndex === -1) return null;
 
-  // 3. Pisahkan Masa Lalu, Sekarang, dan Masa Depan
-  const previousTopics = allLessons.slice(0, currentIndex).join(', ');
+  // 3. OPTIMISASI TOKEN (Sliding Window):
+  // Cuma ambil 5 topik ke belakang dan 5 topik ke depan.
+  // Gak perlu kirim ratusan list lesson yang bikin token jebol.
+
+  const startPrev = Math.max(0, currentIndex - 5);
+  const previousTopics = allLessons.slice(startPrev, currentIndex).join(', ');
+
+  const endFuture = Math.min(allLessons.length, currentIndex + 6);
+  const futureTopics = allLessons.slice(currentIndex + 1, endFuture).join(', ');
+
   const currentTopic = allLessons[currentIndex];
-  const futureTopics = allLessons.slice(currentIndex + 1).join(', ');
 
   return { previousTopics, currentTopic, futureTopics };
 };
