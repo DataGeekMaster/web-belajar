@@ -1672,7 +1672,7 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
     }
   };
 
-  useEffect(() => { loadContent(); }, [lesson, courseTitle]);
+  useEffect(() => { loadContent(); }, [lesson, courseTitle, activeCourse]);
 
   useEffect(() => {
     if (content?.challenge) setEssayCode(content.challenge.starter_code);
