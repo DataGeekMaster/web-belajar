@@ -344,7 +344,6 @@ const generateLessonTheory = async (title, courseTitle, description) => {
 
 // 2. Generate Kuis Berdasarkan Teori Tadi, [UPDATED] Generate Kuis dengan Konteks Kurikulum & Tingkat Kesulitan
 const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
-  // Susun instruksi konteks (jika ada)
   let contextInstruction = "";
   if (context) {
     contextInstruction = `
@@ -368,20 +367,30 @@ const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
 
     Instruksi Output:
     1. Buat "multiple_choice": Array berisi 5 soal pilihan ganda.
-    2. UNTUK SETIAP SOAL, buat field "feedback" (Array string respon A,B,C,D).
+    2. UNTUK SETIAP SOAL, buat field "feedback" (Array string respon untuk setiap opsi A,B,C,D).
     
     ${isProgramming ? `
     3. Buat "coding_challenge" (Essay) dengan SYARAT KHUSUS:
        - TINGKAT KESULITAN: SANGAT MUDAH / PEMULA.
        - HANYA minta user menulis kode yang berkaitan LANGSUNG dengan materi "${context?.currentTopic || 'ini'}".
        - JANGAN menyuruh import library (seperti math, random, dll) KECUALI materi ini memang membahas library tersebut.
-       - Contoh yang BENAR: Jika materi "For Loop", minta user print angka 1 sampai 5.
-       - Contoh yang SALAH: Jika materi "For Loop", jangan minta user buat algoritma sorting atau import numpy.
     ` : ``}
     
     Format JSON MURNI (Tanpa markdown code block):
     {
-      "multiple_choice": [ ... ],
+      "multiple_choice": [
+        {
+          "question": "Contoh Pertanyaan?",
+          "options": ["Opsi A", "Opsi B", "Opsi C", "Opsi D"],
+          "correctAnswer": 0, // WAJIB INTEGER (0, 1, 2, atau 3). Jangan String.
+          "feedback": [
+             "Feedback jika pilih A (Jelaskan kenapa benar/salah)", 
+             "Feedback jika pilih B", 
+             "Feedback jika pilih C", 
+             "Feedback jika pilih D"
+          ] 
+        }
+      ],
       ${isProgramming ? `"coding_challenge": {
          "question": "Instruksi soal koding yang simpel...",
          "starter_code": "# Tulis kodemu disini",
@@ -1621,7 +1630,7 @@ const CodeLabModal = ({ isOpen, onClose, activeCourse }) => {
 };
 
 // [UPDATED] CyberLessonModal - Support Swipe (Mobile) & Keyboard Shortcuts (Desktop)
-const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat, isProgramming }) => {
+const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat, isProgramming, activeCourse }) => {
   const [stage, setStage] = useState('theory');
   const [content, setContent] = useState(null);
 
@@ -1682,12 +1691,16 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
 
   // --- CORE ACTIONS ---
 
+  // [UPDATED] Handle Check: Fix Bug "Jawaban Benar tapi Disalahkan"
   const handleCheck = () => {
     // Cegah double check atau check kosong
     if (tempSelectedOption === null || quizHistory[currentQIndex]) return;
 
     const currentQ = content.quiz[currentQIndex];
-    const isCorrect = tempSelectedOption === currentQ.correctAnswer;
+
+    // FIX UTAMA: Gunakan Number() untuk memaksa kedua sisi jadi angka sebelum dibandingkan
+    // Ini mengatasi jika AI mengirim "1" (string) sedangkan tempSelectedOption adalah 1 (number)
+    const isCorrect = Number(tempSelectedOption) === Number(currentQ.correctAnswer);
 
     // Feedback Dinamis
     let feedbackText = "";
@@ -1699,10 +1712,12 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
         : "Kurang tepat. 😅 " + (currentQ.explanation || "");
     }
 
+    // Simpan history
     const feedbackObj = { correct: isCorrect, text: feedbackText };
     setQuizHistory(prev => ({ ...prev, [currentQIndex]: { selectedOption: tempSelectedOption, feedback: feedbackObj } }));
 
     if (isCorrect) setMcqScore(s => s + 1);
+
     if (currentQIndex === maxReached) { setMaxReached(m => m + 1); }
   };
 
