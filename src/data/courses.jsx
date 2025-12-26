@@ -1,5 +1,5 @@
 // src/data/courses.jsx
-import { Terminal, BarChart2 } from 'lucide-react';
+import { BookOpenText, BarChart3, Terminal, BarChart2, Calculator, Dices, Code, BookOpen, Cpu, Database, Activity, Layers, Dice2 } from 'lucide-react';
 
 export const COURSES_DATA = [
     {
@@ -996,7 +996,7 @@ export const COURSES_DATA = [
         description: "Dari nol sampai jago analisis data & machine learning.",
         isProgramming: true,
         color: "pink",
-        icon: <Terminal size={24} />,
+        icon: <BarChart3 size={24} />,
         codeConfig: {
             language: "R",
             defaultCode: "data <- c(10, 20, 30, 40)\nmean(data)",
@@ -1897,8 +1897,8 @@ export const COURSES_DATA = [
         title: "METODE STATISTIKA",
         description: "Dari nol sampai jago analisis data & machine learning.",
         isProgramming: false,
-        color: "green",
-        icon: <Terminal size={24} />,
+        color: "red",
+        icon: <Dice2 size={24} />,
         codeConfig: {
             language: "R",
             defaultCode: "print('Halo, mari belajar Statistik!')",
@@ -2485,7 +2485,7 @@ export const COURSES_DATA = [
         description: "Kursus lengkap Kalkulus I dari dasar hingga mahir.",
         isProgramming: false,
         color: "yellow",
-        icon: <Terminal size={24} />,
+        icon: <Calculator size={24} />,
         codeConfig: {
             language: "R",
             defaultCode: "print('Halo, mari belajar Statistik!')",
@@ -2832,7 +2832,7 @@ export const COURSES_DATA = [
         description: "Pelajari konsep dasar IPA dan Matematika yang menyenangkan untuk siswa kelas 4 SD.",
         isProgramming: false,
         color: "purple",
-        icon: <Terminal size={24} />,
+        icon: <BookOpenText size={24} />,
         codeConfig: {
             language: "",
             defaultCode: "",
@@ -5666,7 +5666,7 @@ export const COURSES_DATA = [
         description: "Mempelajari cara menguji teori ekonomi secara kuantitatif, memahami asumsi-asumsi model Ordinary Least Square (OLS), serta mengidentifikasi dan menangani pelanggaran asumsi klasik agar estimasi regresi tetap valid.",
         isProgramming: false,
         color: "indigo",
-        icon: <BarChart2 size={24} />,
+        icon: <Activity size={24} />,
         codeConfig: {
             language: "R",
             defaultCode: "# Model OLS sederhana\nmodel <- lm(Y ~ X1 + X2, data = mydata)\nsummary(model)",
