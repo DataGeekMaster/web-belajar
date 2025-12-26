@@ -17,8 +17,14 @@ prompt.txt
 src/old_app.jsx
 
 # Data files
-src/data/data_extractor_toJson.py
-src/data/*.csv
+src/data/venv
+src/data/filesCSV
+src/data/csv_toJson.py
+src/data/buat courses.py
+src/data/input_rps
+src/data/new_courses.jsx
+src/data/output_csv
+src/data/csvFILES_toJson_.py
 
 # Editor directories and files
 .vscode/*
