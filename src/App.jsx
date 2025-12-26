@@ -342,7 +342,7 @@ const generateLessonTheory = async (title, courseTitle, description) => {
   return await smartAIFetch(prompt);
 };
 
-// 2. Generate Kuis Berdasarkan Teori Tadi, [UPDATED] Generate Kuis dengan Konteks Kurikulum & Tingkat Kesulitan
+// 2. Generate Kuis Berdasarkan Teori Tadi, [UPDATED] Generate Kuis dengan JSON Strict Mode & Smart Cleaner
 const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
   let contextInstruction = "";
   if (context) {
@@ -376,36 +376,54 @@ const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
        - JANGAN menyuruh import library (seperti math, random, dll) KECUALI materi ini memang membahas library tersebut.
     ` : ``}
     
-    Format JSON MURNI (Tanpa markdown code block):
+    ⚠️ ATURAN FORMAT JSON (CRITICAL) ⚠️:
+    1. Gunakan DOUBLE QUOTES (") untuk SEMUA key dan value. DILARANG menggunakan single quote (').
+    2. Jangan ada trailing comma (koma sisa di akhir array/object).
+    3. HANYA OUTPUT JSON VALID. Jangan ada teks basa-basi sebelum atau sesudah JSON.
+    
+    Format JSON Target:
     {
       "multiple_choice": [
         {
           "question": "Contoh Pertanyaan?",
           "options": ["Opsi A", "Opsi B", "Opsi C", "Opsi D"],
-          "correctAnswer": 0, // WAJIB INTEGER (0, 1, 2, atau 3). Jangan String.
+          "correctAnswer": 0,
           "feedback": [
-             "Feedback jika pilih A (Jelaskan kenapa benar/salah)", 
-             "Feedback jika pilih B", 
-             "Feedback jika pilih C", 
-             "Feedback jika pilih D"
+             "Feedback A", 
+             "Feedback B", 
+             "Feedback C", 
+             "Feedback D"
           ] 
         }
-      ],
-      ${isProgramming ? `"coding_challenge": {
-         "question": "Instruksi soal koding yang simpel...",
-         "starter_code": "# Tulis kodemu disini",
-         "solution_keyword": "keyword jawaban"
+      ]
+      ${isProgramming ? `, "coding_challenge": {
+         "question": "Instruksi...",
+         "starter_code": "# code",
+         "solution_keyword": "keyword"
       }` : ``}
     }
   `;
 
   const text = await smartAIFetch(prompt);
   if (!text) return null;
+
   try {
-    const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // 1. Bersihkan Markdown Block (```json ... ```)
+    let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    // 2. SMART CLEANER: Ambil hanya teks di antara kurung kurawal pertama '{' dan terakhir '}'
+    // Ini berguna jika AI masih bandel kasih teks "Here is your JSON:" di awal.
+    const firstBrace = cleanText.indexOf('{');
+    const lastBrace = cleanText.lastIndexOf('}');
+
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+    }
+
     return JSON.parse(cleanText);
   } catch (e) {
     console.error("Gagal parse JSON Quiz:", e);
+    console.log("Raw AI Response:", text); // Cek console untuk lihat apa yang dikirim AI
     return null;
   }
 };

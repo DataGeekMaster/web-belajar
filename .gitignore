@@ -25,6 +25,7 @@ src/data/input_rps
 src/data/new_courses.jsx
 src/data/output_csv
 src/data/csvFILES_toJson_.py
+src/data/latihancoding.py
 
 # Editor directories and files
 .vscode/*
