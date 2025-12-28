@@ -89,29 +89,52 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
 
-// --- UTILS: MARKDOWN SIMPLIFIER (FINAL FIX) ---
+// [UPDATED] Utils: Markdown Simplifier dengan Support LaTeX Math
 const parseInline = (text) => {
   if (!text || typeof text !== 'string') return null;
 
   const cleanText = text.replace(/\\n/g, '\n').trim();
 
-  // FIX REGEX: Gunakan [\s\S] menggantikan . agar bisa membaca baris baru (multiline bold)
-  const parts = cleanText.split(/(\*\*[\s\S]*?\*\*|\*[\s\S]*?\*|`.*?`|\$.*?\$)/g);
+  // FIX REGEX: 
+  // 1. Menambahkan support untuk Block Math: $$...$$ atau \[...\]
+  // 2. Menambahkan support untuk Inline Math: \(...\)
+  // 3. Tetap support format lama (**, *, `, $)
+  const parts = cleanText.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\(.*?\\\)|`.*?`|\*\*[\s\S]*?\*\*|\*[\s\S]*?\*|\$.*?\$)/g);
 
   return parts.map((part, index) => {
-    // Bold: Ubah font-black jadi font-bold agar tidak terlalu "nge-gas" tebalnya
+    // 1. Handle Display Math (Block) -> \[ ... \] atau $$...$$
+    if ((part.startsWith('$$') && part.endsWith('$$')) || (part.startsWith('\\[') && part.endsWith('\\]'))) {
+      // Hapus tanda kurung pembuka/penutup
+      const content = part.startsWith('$$') ? part.slice(2, -2) : part.slice(2, -2);
+      return (
+        <div key={index} className="bg-indigo-50 text-indigo-800 p-3 rounded-xl font-serif text-center my-3 overflow-x-auto shadow-sm border border-indigo-100 text-sm md:text-base">
+          {content}
+        </div>
+      );
+    }
+
+    // 2. Handle Inline Math (Baris) -> \( ... \)
+    if (part.startsWith('\\(') && part.endsWith('\\)')) {
+      return (
+        <span key={index} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded-md font-serif italic mx-1 text-[13px]">
+          {part.slice(2, -2)}
+        </span>
+      );
+    }
+
+    // 3. Bold (**...**)
     if (part.startsWith('**') && part.endsWith('**'))
       return <strong key={index} className="font-bold tracking-tight">{part.slice(2, -2)}</strong>;
 
-    // Italic
+    // 4. Italic (*...*)
     if (part.startsWith('*') && part.endsWith('*'))
       return <em key={index} className="text-blue-600 font-semibold not-italic bg-blue-50 px-1 rounded">{part.slice(1, -1)}</em>;
 
-    // Code
+    // 5. Code (`...`)
     if (part.startsWith('`') && part.endsWith('`'))
       return <code key={index} className="bg-slate-100 px-1.5 py-0.5 rounded-lg text-pink-600 font-mono text-[13px] font-bold border border-slate-200">{part.slice(1, -1)}</code>;
 
-    // Math
+    // 6. Math Legacy ($...$)
     if (part.startsWith('$') && part.endsWith('$'))
       return (
         <span key={index} className="inline-block bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-serif italic mx-1 text-[13px] shadow-sm">
@@ -119,6 +142,7 @@ const parseInline = (text) => {
         </span>
       );
 
+    // Teks Biasa
     return part;
   });
 };
