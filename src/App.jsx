@@ -17,6 +17,8 @@ import {
 } from 'firebase/firestore';
 import {
   AlertTriangle,
+  ArrowBigRight,
+  ArrowBigLeft,
   ArrowRight,
   Award,
   BookOpen,
@@ -29,6 +31,7 @@ import {
   LogOut,
   MessageSquare,
   Network,
+  NotebookText,
   Pencil,
   Play,
   RefreshCw,
@@ -89,22 +92,17 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = 'fadhil-learning-app'; // Kasih nama bebas aja string biasa
 
-// [UPDATED] Utils: Markdown Simplifier dengan Support LaTeX Math
 const parseInline = (text) => {
   if (!text || typeof text !== 'string') return null;
 
   const cleanText = text.replace(/\\n/g, '\n').trim();
 
-  // FIX REGEX: 
-  // 1. Menambahkan support untuk Block Math: $$...$$ atau \[...\]
-  // 2. Menambahkan support untuk Inline Math: \(...\)
-  // 3. Tetap support format lama (**, *, `, $)
+  // UPGRADE: Regex baru yang support LaTeX ($$..$$ dan \[..\])
   const parts = cleanText.split(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\(.*?\\\)|`.*?`|\*\*[\s\S]*?\*\*|\*[\s\S]*?\*|\$.*?\$)/g);
 
   return parts.map((part, index) => {
     // 1. Handle Display Math (Block) -> \[ ... \] atau $$...$$
     if ((part.startsWith('$$') && part.endsWith('$$')) || (part.startsWith('\\[') && part.endsWith('\\]'))) {
-      // Hapus tanda kurung pembuka/penutup
       const content = part.startsWith('$$') ? part.slice(2, -2) : part.slice(2, -2);
       return (
         <div key={index} className="bg-indigo-50 text-indigo-800 p-3 rounded-xl font-serif text-center my-3 overflow-x-auto shadow-sm border border-indigo-100 text-sm md:text-base">
@@ -142,7 +140,6 @@ const parseInline = (text) => {
         </span>
       );
 
-    // Teks Biasa
     return part;
   });
 };
@@ -347,9 +344,9 @@ const smartAIFetch = async (promptGenerator) => {
 // --- [NEW] GENERATOR TERPISAH (MATERI & SOAL) ---
 
 // 1. Generate Teori Dulu
-const generateLessonTheory = async (title, courseTitle, description) => {
+const generateLessonTheory = async (title, courseTitle, description, isProgramming) => {
   const prompt = `
-    Role: Tutor Coding & Sains yang Asik, Gaul, tapi sangat mendalam pengetahuannya.
+    Role: Tutor ${isProgramming ? 'Coding' : 'Sains'} yang Asik, Gaul, tapi sangat mendalam pengetahuannya.
     Konteks: Kursus "${courseTitle}".
     Topik: "${title}".
     Deskripsi Singkat: "${description}".
@@ -358,29 +355,41 @@ const generateLessonTheory = async (title, courseTitle, description) => {
     Buat penjelasan materi LENGKAP, MENDALAM, dan TERSTRUKTUR tentang topik di atas.
     - Gunakan Bahasa Indonesia yang santai/gaul tapi tetap edukatif.
     - Berikan contoh nyata atau analogi yang mudah dimengerti.
-    - Jika ini tentang coding, berikan contoh kode snippet.
-    - Jika ini tentang sains/matematika, berikan rumus dan contoh perhitungannya.
+    ${isProgramming ?
+      '- Berikan contoh kode snippet.' :
+      '- Berikan rumus dan contoh perhitungannya.'
+    }
+    ⛔ CONSTRAINT PENTING:
+    - JANGAN sertakan "Latihan Mandiri", "Tugas", "Soal", atau "PR" di akhir materi.
+    - JANGAN buat bab kesimpulan/checklist.
+    - Cukup jelaskan teori dan contoh saja, karena sesi latihan/kuis sudah ada sistemnya sendiri terpisah.
+
+    ⚠️ INSTRUKSI FORMAT OUTPUT:
     - Format output WAJIB Markdown murni. JANGAN pakai JSON di sini.
   `;
 
   return await smartAIFetch(prompt);
 };
 
-// 2. Generate Kuis Berdasarkan Teori Tadi, [UPDATED] Generate Kuis dengan JSON Strict Mode & Smart Cleaner
+// [UPDATED] Generate Kuis dengan Anti-Halusinasi Index
 const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
+  // Tentukan jenis tantangannya secara dinamis
+  const challengeType = isProgramming ? "Tantangan Coding (Coding Challenge)" : "Soal Analisa/Hitungan (Essay)";
+
   let contextInstruction = "";
   if (context) {
     contextInstruction = `
     ATURAN KURIKULUM (STRICT):
-    1. Materi yang SUDAH dipelajari user: [${context.previousTopics}]. Boleh digunakan sebagai pendukung.
-    2. Materi SAAT INI: "${context.currentTopic}". WAJIB menjadi fokus utama soal.
-    3. Materi MASA DEPAN (BELUM BELAJAR): [${context.futureTopics}]. DILARANG KERAS menggunakan konsep/library dari sini.
+    1. Status User: ${context.previousTopics.length < 5 ? 'PEMULA TOTAL' : 'Sedang Belajar'}.
+    2. Materi yang SUDAH dipelajari: [${context.previousTopics}]. 
+    3. Materi SAAT INI: "${context.currentTopic}". (Soal WAJIB fokus di sini).
+    4. Materi MASA DEPAN (BELUM BELAJAR): [${context.futureTopics}]. DILARANG menggunakan konsep ini.
     `;
   }
 
   const prompt = `
-    Role: Guru Coding untuk Pemula yang Sangat Pengertian.
-    Tugas: Buat soal ujian BERDASARKAN materi berikut.
+    Role: Mentor Belajar & Dosen yang Menguji Pemahaman.
+    Tugas: Buat soal dasar (mudah) untuk menguji pemahaman BERDASARKAN materi berikut.
     
     ${contextInstruction}
 
@@ -391,40 +400,37 @@ const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
 
     Instruksi Output:
     1. Buat "multiple_choice": Array berisi 5 soal pilihan ganda.
-    2. UNTUK SETIAP SOAL, buat field "feedback" (Array string respon untuk setiap opsi A,B,C,D).
+    2. UNTUK SETIAP SOAL:
+       - "options": Array 4 pilihan jawaban.
+       - "correctAnswerText": TULIS ULANG teks jawaban yang benar PERSIS SAMA dengan salah satu opsi. (JANGAN GUNAKAN INDEX ANGKA DULU).
+       - "feedback": Array 4 string feedback untuk setiap opsi.
+
+    3. Buat ${isProgramming ? 'coding_challenge' : 'Essay'} dengan SYARAT KHUSUS:
+       - TIPE SOAL: ${challengeType}.
+       ${isProgramming
+      ? '- Minta user menulis KODE PROGRAM. Berikan "starter_code".'
+      : '- Minta user menulis ANALISIS / JAWABAN TEKS. "starter_jawaban" isi dengan "// Tulis jawaban analisismu di sini...".'}
+       - Soal harus bisa dikerjakan dengan materi SAAT INI + materi SEBELUMNYA saja.
     
-    ${isProgramming ? `
-    3. Buat "coding_challenge" (Essay) dengan SYARAT KHUSUS:
-       - TINGKAT KESULITAN: SANGAT MUDAH / PEMULA.
-       - HANYA minta user menulis kode yang berkaitan LANGSUNG dengan materi "${context?.currentTopic || 'ini'}".
-       - JANGAN menyuruh import library (seperti math, random, dll) KECUALI materi ini memang membahas library tersebut.
-    ` : ``}
-    
-    ⚠️ ATURAN FORMAT JSON (CRITICAL) ⚠️:
-    1. Gunakan DOUBLE QUOTES (") untuk SEMUA key dan value. DILARANG menggunakan single quote (').
-    2. Jangan ada trailing comma (koma sisa di akhir array/object).
-    3. HANYA OUTPUT JSON VALID. Jangan ada teks basa-basi sebelum atau sesudah JSON.
+    ⚠️ ATURAN FORMAT JSON (CRITICAL):
+    1. Gunakan DOUBLE QUOTES (") untuk SEMUA key dan value.
+    2. HANYA OUTPUT JSON VALID.
     
     Format JSON Target:
     {
-      "multiple_choice": [
+      "multiple_choice": [ 
         {
-          "question": "Contoh Pertanyaan?",
-          "options": ["Opsi A", "Opsi B", "Opsi C", "Opsi D"],
-          "correctAnswer": 0,
-          "feedback": [
-             "Feedback A", 
-             "Feedback B", 
-             "Feedback C", 
-             "Feedback D"
-          ] 
+          "question": "...",
+          "options": ["A", "B", "C", "D"],
+          "correctAnswerText": "A", 
+          "feedback": ["...", "...", "...", "..."]
         }
-      ]
-      ${isProgramming ? `, "coding_challenge": {
+      ], 
+      "coding_challenge": {
          "question": "Instruksi...",
-         "starter_code": "# code",
+         "starter_code": "...",
          "solution_keyword": "keyword"
-      }` : ``}
+      }
     }
   `;
 
@@ -432,22 +438,61 @@ const generateLessonQuiz = async (theoryContent, isProgramming, context) => {
   if (!text) return null;
 
   try {
-    // 1. Bersihkan Markdown Block (```json ... ```)
     let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    // 2. SMART CLEANER: Ambil hanya teks di antara kurung kurawal pertama '{' dan terakhir '}'
-    // Ini berguna jika AI masih bandel kasih teks "Here is your JSON:" di awal.
     const firstBrace = cleanText.indexOf('{');
     const lastBrace = cleanText.lastIndexOf('}');
-
     if (firstBrace !== -1 && lastBrace !== -1) {
       cleanText = cleanText.substring(firstBrace, lastBrace + 1);
     }
 
-    return JSON.parse(cleanText);
+    const parsedData = JSON.parse(cleanText);
+
+    // --- 🛡️ SAFETY GUARD: FIX HALUSINASI INDEX ---
+    if (parsedData.multiple_choice && Array.isArray(parsedData.multiple_choice)) {
+      parsedData.multiple_choice = parsedData.multiple_choice.map(q => {
+        // 1. Pastikan options adalah Array
+        if (!Array.isArray(q.options)) {
+          if (typeof q.options === 'object' && q.options !== null) {
+            q.options = Object.values(q.options);
+          } else {
+            q.options = ["Opsi A", "Opsi B", "Opsi C", "Opsi D"];
+          }
+        }
+
+        // 2. 🔥 LOGIKA PERBAIKAN INDEX 🔥
+        // Cari index di mana teks opsinya SAMA PERSIS dengan correctAnswerText dari AI
+        if (q.correctAnswerText) {
+          // Bersihkan spasi kiri kanan biar matching akurat
+          const target = String(q.correctAnswerText).trim();
+          const foundIndex = q.options.findIndex(opt => String(opt).trim() === target);
+
+          if (foundIndex !== -1) {
+            // KITA PAKSA INDEXNYA SESUAI TEMUAN KITA
+            q.correctAnswer = foundIndex;
+          } else {
+            // Fallback: Kalau teks gak ketemu, default ke 0 (daripada error)
+            q.correctAnswer = typeof q.correctAnswer === 'number' ? q.correctAnswer : 0;
+          }
+        } else {
+          // Kalau AI lupa kasih text, pakai index lama (semoga bener)
+          q.correctAnswer = typeof q.correctAnswer === 'number' ? q.correctAnswer : 0;
+        }
+
+        // 3. Pastikan feedback array aman
+        if (!Array.isArray(q.feedback)) {
+          q.feedback = ["Kurang tepat.", "Kurang tepat.", "Kurang tepat.", "Kurang tepat."];
+          if (typeof q.correctAnswer === 'number' && q.feedback[q.correctAnswer]) {
+            q.feedback[q.correctAnswer] = "Benar sekali!";
+          }
+        }
+
+        return q;
+      });
+    }
+    return parsedData;
+
   } catch (e) {
     console.error("Gagal parse JSON Quiz:", e);
-    console.log("Raw AI Response:", text); // Cek console untuk lihat apa yang dikirim AI
     return null;
   }
 };
@@ -506,26 +551,46 @@ const generateDailyQuest = async (courseName) => {
   } catch (e) { return null; }
 };
 
-// [UPDATED] Verifikasi Kode dengan Skor Akurasi
-const verifyQuestSubmission = async (desc, code) => {
+// [UPDATED] Verifikasi Kode: Support Kreativitas & Deteksi "Salah Kebiasaan" (React di Python)
+const verifyQuestSubmission = async (desc, code, isProgramming = true) => {
+  // Tentukan Persona AI
+  const role = isProgramming
+    ? "Senior Code Reviewer & Logic Analyzer"
+    : "Dosen Akademik (Fokus Pemahaman)";
+
+  const contextPrompt = isProgramming
+    ? "Analisis KODE user. FOKUS UTAMA: Apakah LOGIKA penyelesaian masalahnya benar? (Bukan sekadar mencocokkan teks output)."
+    : "Analisis JAWABAN TEKS user. Cek apakah argumen logis dan menjawab pertanyaan.";
+
   const prompt = `
-    Role: Senior Code Reviewer.
-    Tugas: Nilai kode user berdasarkan soal: "${desc}".
-    Kode User:
+    Role: ${role}.
+    Tugas: Nilai jawaban user berdasarkan soal: "${desc}".
+    
+    Kode/Jawaban User:
     """
     ${code}
     """
     
-    Analisis:
-    1. Apakah kode berjalan tanpa error?
-    2. Apakah logika memecahkan masalah?
-    3. Apakah output sesuai permintaan?
+    ⚠️ PEDOMAN PENILAIAN (UPDATE):
+    
+    1. **TOLERANSI KREATIVITAS (UTAMA)**: 
+       - Jika user menambahkan print/text tambahan (misal: "Sebelum ditukar...", "Hasilnya...") JANGAN SALAHKAN.
+       - Selama **inti logika** (rumus/swap/metode) benar, anggap jawabannya **BENAR (Correct: true)**.
+       - Kreativitas user adalah nilai plus.
+
+    2. **DETEKSI "LANGUAGE CONFUSION" (PENTING)**:
+       - Jika user menggunakan syntax bahasa lain (misal syntax React \`\${variable}\` di dalam f-string Python), ini **BUKAN FATAL ERROR** (kode tetap jalan).
+       - TINDAKAN: Tetap beri **"correct": true**, tapi kurangi **"accuracy" jadi 85-90**.
+       - FEEDBACK: Beritahu user dengan santai: "Kodenya jalan dan logikanya benar! Tapi hati-hati, kamu sepertinya terbawa kebiasaan React/JS pakai tanda $. Di Python cukup f'{nama_variabel}' tanpa dolar."
+
+    3. **ANTI-HALUSINASI INDENTASI**: 
+       - JANGAN PERNAH menyalahkan "Indentasi" kecuali struktur blok (if/def/for) benar-benar hancur. Jika rata kiri semua, ANGGAP BENAR.
 
     Output WAJIB JSON MURNI:
     {
-      "correct": boolean (true jika akurasi >= 80),
-      "accuracy": number (0-100, berikan 100 jika sempurna, 50-99 jika jalan tapi ada kurang dikit, <50 jika salah/error),
-      "feedback": "Komentar singkat & saran perbaikan (Bahasa Indonesia, markdown)"
+      "correct": boolean,
+      "accuracy": number (0-100),
+      "feedback": "Komentar singkat & suportif (Bahasa Indonesia). Puji logika/kreativitasnya, lalu ingatkan soal syntax style jika ada (seperti tanda $)."
     }
   `;
 
@@ -1340,7 +1405,7 @@ const QuestSolverModal = ({ quest, onClose, onComplete }) => {
 
   const handleSubmit = async () => {
     setChecking(true);
-    const res = await verifyQuestSubmission(quest.description, code);
+    const res = await verifyQuestSubmission(quest.description, code, isProgramming);
     setResult(res);
     setChecking(false);
   };
@@ -1438,9 +1503,11 @@ const DailyQuestWidget = ({ onOpenQuest, onComplete, onQuestLoaded, activeCourse
   );
 };
 
-// [UPDATED] ChatDrawer - Support Edit, Delete & Memory
+// [FIXED] ChatDrawer - Persistent Memory (Hanya reset saat ganti materi)
 const ChatDrawer = ({ isOpen, onClose, topic }) => {
+  // Pesan awal default
   const initialMessage = { role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**? Cerita sini dong!` };
+
   const [messages, setMessages] = useState([initialMessage]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1450,17 +1517,20 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editValue, setEditValue] = useState("");
 
-  // Auto-Reset saat ditutup (Sesuai request: Data dihapus jika user keluar)
+  // --- LOGIKA RESET MEMORI (PENTING) ---
+  // Kita HANYA reset jika TOPIC berubah (User pindah materi).
+  // Kita HAPUS dependency [isOpen] agar saat ditutup ingatan tidak hilang.
   useEffect(() => {
-    if (!isOpen) {
-      setMessages([initialMessage]);
-      setEditingIndex(null);
-      setLoading(false);
-    }
-  }, [isOpen, topic]);
+    setMessages([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**? Cerita sini dong!` }]);
+    setEditingIndex(null);
+    setLoading(false);
+  }, [topic]);
 
+  // Auto-scroll ke bawah saat chat dibuka atau ada pesan baru
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (isOpen && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [messages, isOpen, editingIndex]);
 
   // Handle Kirim Pesan Baru
@@ -1468,13 +1538,13 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
     if (!input.trim()) return;
     const newMsg = { role: 'user', text: input };
 
-    // Update UI dulu
+    // Update UI langsung biar responsif
     const newHistory = [...messages, newMsg];
     setMessages(newHistory);
     setInput("");
     setLoading(true);
 
-    // Panggil AI dengan Memori
+    // Panggil AI
     const aiReply = await chatWithAI(topic, newHistory);
     setMessages(prev => [...prev, { role: 'ai', text: aiReply }]);
     setLoading(false);
@@ -1497,36 +1567,46 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
   const handleSaveEdit = async (index) => {
     if (!editValue.trim()) return;
 
-    // 1. Potong history sampai pesan yang diedit (pesan setelahnya dihapus karena konteks berubah)
-    // index adalah posisi pesan user. Kita ambil 0 sampai index.
+    // 1. Potong history sampai pesan yang diedit
     const slicedHistory = messages.slice(0, index);
 
     // 2. Tambahkan pesan user yang baru
     const updatedMsg = { role: 'user', text: editValue };
     const newHistory = [...slicedHistory, updatedMsg];
 
-    // 3. Set State & Loading
     setMessages(newHistory);
     setEditingIndex(null);
     setLoading(true);
 
-    // 4. Minta AI jawab ulang
+    // 3. Minta AI jawab ulang berdasarkan edit baru
     const aiReply = await chatWithAI(topic, newHistory);
     setMessages(prev => [...prev, { role: 'ai', text: aiReply }]);
     setLoading(false);
   };
 
-  if (!isOpen) return null;
+  // --- RENDERING (HAPUS 'if !isOpen return null') ---
+  // Kita gunakan CSS Class untuk menyembunyikan (Slide Out) agar MEMORI TETAP HIDUP.
+  // pointer-events-none: Agar saat transparan tidak menghalangi klik di belakangnya.
 
   return (
-    <div className="fixed inset-0 z-[60] flex justify-end bg-slate-900/20 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-300" onClick={e => e.stopPropagation()}>
+    <div
+      className={`fixed inset-0 z-[60] flex justify-end transition-colors duration-300 ${isOpen ? 'bg-slate-900/20 backdrop-blur-sm pointer-events-auto' : 'bg-transparent pointer-events-none'}`}
+      onClick={onClose}
+    >
+      <div
+        className={`w-full max-w-md bg-white h-full flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        onClick={e => e.stopPropagation()}
+      >
 
         {/* Header */}
         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-blue-600 text-white">
           <h3 className="font-black text-lg flex items-center gap-2"><Sparkles size={20} className="text-yellow-300 fill-yellow-300" /> Tutor AI</h3>
           <div className="flex items-center gap-2">
-            <button onClick={() => setMessages([initialMessage])} className="p-1.5 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors" title="Reset Chat">
+            <button
+              onClick={() => setMessages([{ role: 'ai', text: `Hai Challenger! Ada yang bingung soal **${topic}**? Cerita sini dong!` }])}
+              className="p-1.5 hover:bg-blue-500 rounded-lg text-xs font-bold transition-colors"
+              title="Reset Chat Manual"
+            >
               <RefreshCw size={16} />
             </button>
             <button onClick={onClose} className="p-1 hover:bg-blue-500 rounded-full transition-colors"><X className="text-white" /></button>
@@ -1563,22 +1643,13 @@ const ChatDrawer = ({ isOpen, onClose, topic }) => {
                   <>
                     <SimpleMarkdown text={m.text} />
 
-                    {/* Action Buttons (Edit/Delete) - Hanya muncul saat hover & khusus pesan User */}
+                    {/* Action Buttons (Edit/Delete) - Muncul saat Hover */}
                     {m.role === 'user' && (
                       <div className="absolute -left-16 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => handleStartEdit(i, m.text)} className="p-1.5 bg-white text-slate-500 rounded-full shadow-md hover:text-blue-600 hover:scale-110 transition-all">
                           <Pencil size={12} />
                         </button>
                         <button onClick={() => handleDelete(i)} className="p-1.5 bg-white text-slate-500 rounded-full shadow-md hover:text-red-600 hover:scale-110 transition-all">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Hapus pesan AI juga boleh kalau mau bersih-bersih */}
-                    {m.role === 'ai' && i !== 0 && (
-                      <div className="absolute -right-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleDelete(i)} className="p-1.5 bg-slate-200 text-slate-500 rounded-full hover:text-red-600 hover:bg-red-100 transition-all">
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -1704,7 +1775,7 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
     setIsError(false); setContent(null);
     try {
       setLoadingStatus("Menyusun materi...");
-      const theoryText = await generateLessonTheory(lesson.title, courseTitle, lesson.description);
+      const theoryText = await generateLessonTheory(lesson.title, courseTitle, lesson.description, isProgramming);
       if (!theoryText) throw new Error("Gagal generate materi.");
 
       setLoadingStatus("Meracik soal...");
@@ -1861,7 +1932,7 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
   // --- Handle Essay Check ---
   const handleCheckEssay = async () => {
     setCheckingEssay(true);
-    const res = await verifyQuestSubmission(content.challenge.question, essayCode);
+    const res = await verifyQuestSubmission(content.challenge.question, essayCode, isProgramming);
     setEssayResult(res);
 
     let points = 0;
@@ -1889,13 +1960,30 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in zoom-in-95 duration-200">
       <div className="w-full max-w-3xl h-[90vh] bg-white rounded-[40px] shadow-2xl flex flex-col overflow-hidden border-8 border-white">
 
-        {/* HEADER */}
+        {/* HEADER DENGAN NAVIGASI */}
         <div className="p-6 border-b-2 border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="w-full">
             <div className="flex justify-between items-center mb-2">
-              <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="text-slate-400" /></button>
+
+              {/* KIRI: Tombol Close & Back */}
+              <div className="flex items-center gap-1">
+                <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X className="text-red-600" /></button>
+
+                {/* INI TOMBOL PANAH KIRI */}
+                <button
+                  onClick={handlePrev}
+                  disabled={currentQIndex === 0 && stage !== 'summary'}
+                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500 disabled:opacity-20 disabled:cursor-not-allowed"
+                >
+                  <ArrowBigLeft />
+                </button>
+              </div>
+
+              {/* TENGAH: Progress Dots (Biarkan codingan map dots yang lama di sini) */}
               <div className="flex gap-1">
                 {content.quiz.map((_, i) => {
+                  // ... (Paste ulang logika dot warna-warni kamu yang lama di sini) ...
+                  // Kalau bingung, copy logic dot dari file aslimu, intinya ini bagian titik-titiknya
                   let dotClass = "w-4 bg-slate-200 cursor-not-allowed";
                   if (stage === 'quiz' && i === currentQIndex) { dotClass = "w-8 bg-blue-500"; }
                   else if (i <= maxReached || stage === 'essay' || stage === 'summary') {
@@ -1910,7 +1998,20 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
                   <div className={`h-2 rounded-full transition-all ml-2 ${stage === 'essay' ? 'w-8 bg-purple-500' : (stage === 'summary' ? (essayPoints > 0 ? 'w-4 bg-green-400' : 'w-4 bg-red-400') : 'w-4 bg-slate-200')} `} />
                 )}
               </div>
-              <div className="w-8"></div>
+
+              {/* KANAN: Tombol Next (Spacer biar seimbang) */}
+              <div className="flex items-center gap-1">
+                {/* INI TOMBOL PANAH KANAN */}
+                <button
+                  onClick={handleNext}
+                  // Disable jika di ujung soal dan belum dijawab
+                  disabled={stage === 'quiz' && currentQIndex >= maxReached && !quizHistory[currentQIndex]}
+                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500 disabled:opacity-20 disabled:cursor-not-allowed"
+                >
+                  <ArrowBigRight />
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
@@ -1995,24 +2096,33 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
             </div>
           )}
 
-          {/* STAGE 3: ESSAY CODING */}
+          {/* STAGE 3: ESSAY CODING ATAU ANALISIS */}
           {stage === 'essay' && content.challenge && (
             <div className="max-w-xl mx-auto pt-4 animate-in slide-in-from-right-8">
               <div className="mb-4 bg-purple-100 text-purple-700 px-4 py-2 rounded-xl font-bold border-l-4 border-purple-500 flex items-center gap-2">
-                <Terminal size={18} /> TANTANGAN KODING
+                {isProgramming ? <Terminal size={18} /> : <NotebookText size={18} />}
+                {isProgramming ? "TANTANGAN KODING" : "ANALISIS PEMAHAMAN"}
               </div>
               <h3 className="text-xl font-black text-slate-800 mb-4">{content.challenge.question}</h3>
 
-              <div className="bg-slate-900 rounded-xl overflow-hidden border-4 border-slate-800 mb-4">
-                <div className="bg-slate-800 px-4 py-2 text-xs text-slate-400 font-mono flex justify-between">
-                  <span>editor.py</span>
-                  <span>Python/R</span>
+              <div className={`rounded-xl overflow-hidden border-4 mb-4 shadow-sm ${isProgramming ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                {/* Header Kecil */}
+                <div className={`px-4 py-2 text-xs font-bold flex justify-between ${isProgramming ? 'bg-slate-800 text-slate-400 font-mono' : 'bg-slate-100 text-slate-500 border-b border-slate-200'}`}>
+                  <span>{isProgramming ? 'Code editor' : 'Lembar Jawaban'}</span>
+                  <span>{isProgramming ? 'Bahasa pemrograman course saat ini' : 'Teks'}</span>
                 </div>
+
+                {/* Textarea yang berubah style */}
                 <textarea
                   value={essayCode}
                   onChange={e => setEssayCode(e.target.value)}
-                  className="w-full h-48 bg-[#0d0d0d] text-blue-300 font-mono p-4 resize-none focus:outline-none text-sm"
-                  spellCheck="false"
+                  className={`w-full h-48 p-4 resize-none focus:outline-none text-sm leading-relaxed transition-colors
+                    ${isProgramming
+                      ? 'bg-[#0d0d0d] text-blue-300 font-mono' // Mode Coding (Gelap)
+                      : 'bg-white text-slate-800 font-sans placeholder:text-slate-300' // Mode Essay (Terang/Kertas)
+                    }`}
+                  spellCheck={!isProgramming} // Essay butuh spellcheck, coding enggak
+                  placeholder={isProgramming ? "# Tulis kodemu di sini..." : "Tulis jawaban analisismu di sini..."}
                 />
               </div>
 
@@ -2031,8 +2141,8 @@ const CyberLessonModal = ({ lesson, onClose, onComplete, courseTitle, onOpenChat
                   {checkingEssay ? <RefreshCw className="animate-spin" /> : <Play fill="currentColor" />} {checkingEssay ? "MENILAI..." : "CEK KODE"}
                 </button>
 
-                <button onClick={() => setStage('summary')} className={`flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-3 rounded-xl border-b-4 border-slate-400 active:border-b-0 active:translate-y-1 btn-3d transition-all ${essayPoints > 0 ? 'bg-green-500 text-white border-green-700 hover:bg-green-400' : ''}`}>
-                  {essayPoints > 0 ? "LANJUT HASIL 🏆" : "LEWATI"}
+                <button onClick={() => setStage('summary')} className={`flex-1 bg-green-500 hover:bg-green-400 text-white font-bold py-3 rounded-xl border-b-4 border-green-700 active:border-b-0 active:translate-y-1 btn-3d transition-all ${essayPoints > 0 ? 'bg-green-500 text-white border-green-700 hover:bg-green-400' : ''}`}>
+                  {essayPoints > 0 ? "SELESAIKAN QUIZ 🏆" : "LEWATI"}
                 </button>
               </div>
             </div>

@@ -70,11 +70,6 @@ export const COURSES_DATA = [
                         description: "Mau tahu cara Python mikir?"
                     },
                     {
-                        id: "py_quiz",
-                        title: "Quiz",
-                        description: "Tes sejauh mana kamu paham"
-                    },
-                    {
                         id: "py_python_implementations",
                         title: "Python Implementations",
                         description: "Python pun banyak versi lho"
@@ -195,11 +190,6 @@ export const COURSES_DATA = [
                         id: "py_infinite_loops",
                         title: "Infinite Loops",
                         description: "Loop tanpa batas, hati-hati!"
-                    },
-                    {
-                        id: "py_exercise",
-                        title: "Exercise",
-                        description: "Latihan coding biar makin jago"
                     }
                 ]
             },
@@ -261,16 +251,6 @@ export const COURSES_DATA = [
                         id: "py_vscode_coding_tricks_mac",
                         title: "VSCode Coding Tricks - Mac",
                         description: "Tips coding di Mac"
-                    },
-                    {
-                        id: "py_exercise",
-                        title: "Exercise",
-                        description: "Latihan coding biar makin jago"
-                    },
-                    {
-                        id: "py_solution",
-                        title: "Solution",
-                        description: "Solusi, cek jawabanmu"
                     }
                 ]
             },
@@ -387,11 +367,6 @@ export const COURSES_DATA = [
                         id: "py_unpacking_operator",
                         title: "Unpacking Operator",
                         description: "Bongkar paket data"
-                    },
-                    {
-                        id: "py_exercise",
-                        title: "Exercise",
-                        description: "Latihan coding biar makin jago"
                     }
                 ]
             },
